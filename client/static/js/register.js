@@ -1,5 +1,6 @@
 console.log("Register script loaded");
 
+import {ws} from "./script.js"
 import { fetchPosts } from './posts.js';
 
 document.getElementById("signUpLink").addEventListener("click", function(e) {
@@ -154,7 +155,7 @@ document.getElementById("logout").addEventListener("click", function(e) {
             document.getElementById("feedPost").style.display = "none";
             document.getElementById('logsuccessMessage').style.display = 'none';
             document.getElementById('fullSinglePost').style.display = 'none';
-
+            ws.close()
             
         } else {
             console.error("Logout failed:", data.error);
