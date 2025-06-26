@@ -1,0 +1,59 @@
+:root{
+    --color1: #6E7271;
+    --color2: #ACAD94;
+    --color3: #E2E2E2;
+    --color4: #D8D4D5;
+}
+
+.createPost {
+    display: grid;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--color1);
+    gap: 1rem;
+    width: 50%;
+    margin: 0 auto;
+    padding: 2rem 10rem 3rem 10rem;
+    border-radius: 12px;
+    color: var(--color3);
+    display: none;
+    margin-top: 2rem;
+}
+
+.createPost h1 {
+    text-align: center;
+    font-size: 2rem;
+}
+
+.createPost #myCreateForm {
+    display: grid;
+    text-align: center;
+}
+
+#myCreateForm label {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+#myCreateForm input, select {
+    color: black;
+    height: 1.5rem;
+    border-radius: 12px;
+    padding: 0.5rem;
+}
+
+#myCreateForm select {
+    height: 2.5rem;
+}
+
+#myCreateForm textarea {
+    color: black;
+    height: 10rem;
+    border-radius: 12px;
+    padding: 0.5rem;
+}
+
+.createError {
+    font-size: 1rem;
+    text-align: center;
+}

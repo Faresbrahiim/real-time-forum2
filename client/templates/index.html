@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="../static/css/login.css">
+    <link rel="stylesheet" href="../static/css/signup.css">
+    <link rel="stylesheet" href="../static/css/createpost.css">
+    <link rel="stylesheet" href="../static/css/post.css">
+    
+    <title>Real-time-forum</title>
+</head>
+<body>
+
+
+   
+    <div class="wrapper">
+    <!-- navbar Section-->
+    <header>
+            <section class="navBar">
+                <h1 class="logo">Forum</h1>
+                <ul class="categories">
+                    <li class="needLog" id="home">home</li>
+                    <li class="needLog" id="logout">log out</li>
+                    <li class="needLog" id="createicon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M12 2C11.4477 2 11 2.4477 11 3V11H3C2.4477 11 2 11.4477 2 12C2 12.5523 2.4477 13 3 13H11V21C11 21.5523 11.4477 22 12 22C12.5523 22 13 21.5523 13 21V13H21C21.5523 13 22 12.5523 22 12C22 11.4477 21.5523 11 21 11H13V3C13 2.4477 12.5523 2 12 2Z" fill="currentColor"/>
+                      </svg></li>
+                </ul>
+            </section>
+    </header>
+     <div id="freinds" style="display: none;">
+   <div id="userList"></div>
+    
+    <!-- <p id="chatLog"></p><br> -->
+    <p id="msgInput"></p>
+    </div>
+     <!-- Log In Section-->
+      <section class="logIn" id="logInSection">
+          <div class="myLogIn">
+              <h1>Log In</h1>
+              <div id="logerrorMessage" class="logerror" style="color: red;"></div>
+              <div id="logsuccessMessage" class="logerror" style="color: green;"></div>
+              <form id="myLogInForm">
+                <label for="username">Username:</label>
+                <input type="text" placeholder="Enter your username..." name="username" id="myUserName" minlength="6" required>
+                <br><br>
+                <label for="password">password</label>
+                <input type="password" name="password" id="myPassword" placeholder="Enter your password..." minlength="6" required>
+                <br><br>
+                <input type="submit" value="Submit" id="submitLogIn">
+                <br><br>
+                <p>Don't have an account? <a href="/signup" id="signUpLink">Sign Up</a></p>
+            </form>
+        </div>
+      </section>
+
+   <section class="signUp" id="signUpSection">
+    <div class="mySignUp">
+        <form id="mySignUpForm">
+            <h1>Sign Up</h1>
+            
+            <!-- Error message div -->
+            <div id="errorMessage" style="color: red;"></div>
+            <div id="successMessage" style="color: green;"></div>
+            
+            <label for="nickname">Nickname:</label>
+            <input type="text" placeholder="Enter your Nickname..." name="Nickname" id="myUserNickname" minlength="6" required>
+            <br><br>
+            <label for="Age">Age:</label>
+            <input type="number" name="Age" id="myAgedSignUp" placeholder="Enter your Age..." min="18" max="70" required>
+            <br><br>
+            <label for="Gender">Gender:</label>
+            <div class="gender">
+                <label for="genderMale">Male:</label>
+                <input type="radio" name="gender" value="male" id="genderMale" required>
+                <label for="genderFemale">Female:</label>
+                <input type="radio" name="gender" value="female" id="genderFemale" required>
+            </div>
+            <br><br>
+            <label for="FirstName">First Name:</label>
+            <input type="text" placeholder="Enter your First Name..." name="First Name" id="myUserFirstSignUp" minlength="3" required>
+            <br><br>
+            <label for="LastName">Last Name:</label>
+            <input type="text" placeholder="Enter your Last Name..." name="Last Name" id="myUserLastSignUp" minlength="3" required>
+            <br><br>
+            <label for="E-mail">E-mail:</label>
+            <input type="email" placeholder="Enter your E-mail..." name="E-mail" id="myUserMailSignUp" required>
+            <br><br>
+            <label for="Password">Password:</label>
+            <input type="password" placeholder="Enter your Password..." name="Password" id="myUserPasswordSignUp" minlength="6" required>
+            <br><br>
+            <input type="submit" value="Submit" id="submitSignUp">
+            <br><br>
+        </form>
+    </div>
+</section>
+    </section>
+        <!-- Create Post Section-->
+    <section class="createPost" id="createPost">
+        <h1>Create Post</h1>
+        <div id="createErrorMessage" class="createError" style="color: red;"></div>
+        <div id="createSuccessMessage" class="createError" style="color: green;"></div>
+        <form id="myCreateForm">
+            <label for="myPostTitle">Title</label>
+            <input type="text" placeholder="Enter your Title here..." name="title" id="myPostTitle" required>
+            <br><br>
+            <label for="myPostCategory">categories</label>
+            <select name="myPostCategory" id="myPostCategory" name="categories" required>
+                <option value="">-- Select a category --</option>
+                <option value="technology">Technology</option>
+                <option value="fashion">Fashion</option>
+                <option value="health">Health</option>
+                <option value="travel">Travel</option>
+                <option value="education">Education</option>
+                <option value="sports">Sports</option>
+            </select>
+            <br><br>
+            <label for="myPostContent">Content</label>
+            <textarea name="content" placeholder="Enter your content here..." id="myPostContent" required></textarea> 
+            <br><br>
+            <button id="myPostImage">Submit</button>
+        </form>
+    </section>
+        <!-- Feed Post Section-->
+    <section class="feedPost" id="feedPost"></section>
+    <section class="fullSinglePost" id="fullSinglePost">
+        <div class="singlePost" id="singlePost"></div>
+        <div class="singlePostComment" id="singlePostComment">
+            <div class="comment" id="comment"></div>
+            <form id="commentForm">
+                <input type="text" placeholder="Enter your comment..." name="comment" id="commentFormInput" >
+                <input type="submit" value="submit" id="submitComment">
+            </form>
+        </div>
+    </section>
+    <div id="postContainer"></div>
+    <footer>
+        <section class="footer">
+            <div class="created">made by Yassine Fawzi</div>
+        </section>
+    </footer>
+    <script type="module" src="/static/js/register.js"></script>
+    <script type="module"  src="/static/js/posts.js"></script>
+    <script type="module" src="/static/js/session.js"></script>
+     <script type="module" src="/static/js/script.js"></script>
+    </div>
+</body>
+</html>

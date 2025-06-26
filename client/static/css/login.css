@@ -1,0 +1,68 @@
+:root{
+    --color1: #6E7271;
+    --color2: #ACAD94;
+    --color3: #E2E2E2;
+    --color4: #D8D4D5;
+}
+
+.logIn {
+    margin-top: 2rem;
+}
+
+.myLogIn {
+    display: grid   ;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--color1);
+    gap: 1rem;
+    width: 50%;
+    margin: 0 auto;
+    padding: 2rem 10rem 3rem 10rem;
+    border-radius: 12px;
+    color: var(--color3);
+}
+
+.logerror {
+    font-size: 1rem;
+    text-align: center;
+}
+
+.myLogIn h1 {
+    text-align: center;
+}
+
+#myLogInForm {
+    display: grid;
+    gap: 1.2rem;
+    text-align: center;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+#myLogInForm label {
+    font-size: 1.5rem;
+}
+
+#myLogInForm input  {
+    color: black;
+    height: 2rem;
+    width: 30rem;
+    border-radius: 12px;
+}
+
+button {
+    color: var(--color3);
+    height: 2rem;
+    background-color: var(--color1);
+    border-color: var(--color2);
+    border-radius: 12px;
+}
+
+#signUp {
+    color: var(--color3);
+    text-decoration: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+}

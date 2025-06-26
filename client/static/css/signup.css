@@ -1,0 +1,36 @@
+:root{
+    --color1: #6E7271;
+    --color2: #ACAD94;
+    --color3: #E2E2E2;
+    --color4: #D8D4D5;
+}
+
+.signUp {
+    display: none;
+}
+
+.mySignUp {
+    display: grid;
+    justify-content: center;
+    gap: 2rem;
+}
+
+#mySignUpForm {
+    margin-top: 2.5rem;
+    padding: 5rem 10rem 0rem 10rem;
+    background-color: var(--color1);
+    display:grid;
+    gap: 0.2rem;
+    border-radius: 12px;
+    text-align: center;
+}
+
+#mySignUpForm h1 {
+    margin-bottom: 1rem;
+}
+
+#mySignUpForm input  {
+    color: black;
+    border-radius: 12px;
+    padding: 0.5rem;
+}
