@@ -48,13 +48,10 @@ function displayUserStatus(users) {
         container.appendChild(userDiv);
     });
 }
-// 🔌 Try to connect on page load (or after login)
-window.addEventListener("load", () => {
-    // Only connect if user is already logged in (optional check via cookie)
-    connectWebSocket();
-});
+
 
 // 👉 Call this function *manually* after login via fetch (if using AJAX)
 window.afterLogin = function () {
     connectWebSocket();
 };
+

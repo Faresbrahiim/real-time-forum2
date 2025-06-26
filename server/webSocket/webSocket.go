@@ -2,74 +2,69 @@ package ws
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
 	g "forum/server/global"
-	session "forum/server/session"
+	"forum/server/session"
 
 	"github.com/gorilla/websocket"
 )
 
+// upgeader varibale from websocket STRCUT to make http socket
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// a function to handdle webSocket request /ws
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// if session exist && not expire continue
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintf(w, `{"status": %d, "message": "You must be logged in"}`, http.StatusUnauthorized)
+		http.Error(w, `{"status":401, "message":"You must be logged in"}`, http.StatusUnauthorized)
 		return
 	}
-
+	// upgrade to webSocket connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("Upgrade error:", err)
+		log.Println("WebSocket upgrade error:", err)
 		return
 	}
 	defer conn.Close()
 
-	// Add connection to active connections
+	// Add connection to map
+	// lock before add connection and unlock after add connection
 	g.ActiveConnectionsMutex.Lock()
 	g.ActiveConnections[userID] = &g.SafeConn{Conn: conn}
 	g.ActiveConnectionsMutex.Unlock()
 
-	// 🔄 Notify all clients: someone came online
+	// nofify user after connection (online user.....)
 	BroadcastUserStatus()
 
-	// Clean up on disconnect
 	defer func() {
 		g.ActiveConnectionsMutex.Lock()
 		delete(g.ActiveConnections, userID)
 		g.ActiveConnectionsMutex.Unlock()
-
-		// 🔄 Notify all clients: someone went offline
-		BroadcastUserStatus()
+		BroadcastUserStatus() // Notify all clients (user offline)
 	}()
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Read error:", err)
+			log.Println("WebSocket read error:", err)
 			break
 		}
-
-		fmt.Printf("Received: %s\n", msg)
+		log.Printf("Received from %s: %s\n", userID, msg)
 	}
 }
 
-func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
-	onlineUsers := make(map[string]bool)
-	allUsers := make(map[string]string)
+func GetOnlineUsers() (map[string]bool, map[string]string) {
+	online := make(map[string]bool)
+	all := make(map[string]string)
 
 	rows, err := g.DB.Query("SELECT id, username FROM users")
 	if err != nil {
-		log.Println("Error selecting users:", err)
+		log.Println("Database error fetching users:", err)
 		return nil, nil
 	}
 	defer rows.Close()
@@ -80,31 +75,31 @@ func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
 			log.Println("Error scanning user:", err)
 			continue
 		}
-		onlineUsers[id] = false
-		allUsers[id] = name
+		online[id] = false
+		all[id] = name
 	}
 
 	g.ActiveConnectionsMutex.RLock()
 	for id := range g.ActiveConnections {
-		onlineUsers[id] = true
+		online[id] = true
 	}
 	g.ActiveConnectionsMutex.RUnlock()
 
-	return onlineUsers, allUsers
+	return online, all
 }
 
 func BroadcastUserStatus() {
-	onlineUsers, allUsers := GetOnlineUsers("")
-	if onlineUsers == nil || allUsers == nil {
+	online, all := GetOnlineUsers()
+	if online == nil || all == nil {
 		return
 	}
 
 	var userList []map[string]interface{}
-	for id, name := range allUsers {
+	for id, name := range all {
 		userList = append(userList, map[string]interface{}{
 			"id":       id,
 			"username": name,
-			"online":   onlineUsers[id],
+			"online":   online[id],
 		})
 	}
 
@@ -119,7 +114,7 @@ func BroadcastUserStatus() {
 func BroadcastToAllUsers(update interface{}) {
 	jsonUpdate, err := json.Marshal(update)
 	if err != nil {
-		log.Println("Error marshaling update:", err)
+		log.Println("Error marshaling broadcast:", err)
 		return
 	}
 
@@ -132,7 +127,7 @@ func BroadcastToAllUsers(update interface{}) {
 		conn.WriteMu.Unlock()
 
 		if err != nil {
-			log.Println("Error writing to user", userID, ":", err)
+			log.Println("Error sending to user", userID, ":", err)
 		}
 	}
 }
