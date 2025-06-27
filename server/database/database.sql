@@ -32,5 +32,34 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (post_id) REFERENCES posts(id)
 );
 
--- why add session table ? 
--- to track online offline users ,,, ... ect scalabilty and easy to work with it ..
+
+-- conversation 
+CREATE TABLE IF NOT EXISTS Conversations (
+    id TEXT UNIQUE PRIMARY KEY,
+    user1_id TEXT NOT NULL,
+    user2_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user1_id) REFERENCES Users(id),
+    FOREIGN KEY (user2_id) REFERENCES Users(id)
+);
+
+-- 9. Messages ✉️​
+CREATE TABLE IF NOT EXISTS Messages (
+    id TEXT UNIQUE PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    sender_id TEXT NOT NULL,
+    receiver_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    seen BOOLEAN,
+    FOREIGN KEY (conversation_id) REFERENCES Conversations(id),
+    FOREIGN KEY (sender_id) REFERENCES Users(id)
+);
+
+
+--
+-- | id     | conversation\_id | sender\_id | content  |
+-- | ------ | ---------------- | ---------- | -------- |
+-- | msg001 | conv123          | userA      | "Hi!"    |
+-- | msg002 | conv123          | userB      | "Hello!" |
+

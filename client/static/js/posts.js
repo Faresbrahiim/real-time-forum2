@@ -80,7 +80,7 @@ export async function fetchPosts() {
         feedPost.style.display = 'grid';
         feedPost.innerHTML = '';
         // display freinds section
-        document.getElementById("freinds").style.display="block";
+        document.getElementById("freinds").style.display="flex";
 
         posts.forEach(post => {
             const postDiv = document.createElement('div');

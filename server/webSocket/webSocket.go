@@ -2,69 +2,91 @@ package ws
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
 	g "forum/server/global"
-	"forum/server/session"
+	session "forum/server/session"
 
 	"github.com/gorilla/websocket"
 )
 
-// upgeader varibale from websocket STRCUT to make http socket
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+type TypingMessage struct {
+	Type   string `json:"type"`
+	To     string `json:"to"`
+	Status string `json:"status"`
 }
 
-// a function to handdle webSocket request /ws
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// if session exist && not expire continue
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
-		http.Error(w, `{"status":401, "message":"You must be logged in"}`, http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintf(w, `{"status": %d, "message": "You must be logged in"}`, http.StatusUnauthorized)
 		return
 	}
-	// upgrade to webSocket connection
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("WebSocket upgrade error:", err)
+		fmt.Println("Upgrade error:", err)
 		return
 	}
 	defer conn.Close()
-
-	// Add connection to map
-	// lock before add connection and unlock after add connection
 	g.ActiveConnectionsMutex.Lock()
 	g.ActiveConnections[userID] = &g.SafeConn{Conn: conn}
 	g.ActiveConnectionsMutex.Unlock()
 
-	// nofify user after connection (online user.....)
 	BroadcastUserStatus()
 
 	defer func() {
 		g.ActiveConnectionsMutex.Lock()
 		delete(g.ActiveConnections, userID)
 		g.ActiveConnectionsMutex.Unlock()
-		BroadcastUserStatus() // Notify all clients (user offline)
+
+		BroadcastUserStatus()
 	}()
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("WebSocket read error:", err)
+			fmt.Println("Read error:", err)
 			break
 		}
-		log.Printf("Received from %s: %s\n", userID, msg)
+
+		var base map[string]interface{}
+		if err := json.Unmarshal(msg, &base); err != nil {
+			log.Println("Invalid JSON from client")
+			continue
+		}
+
+		switch base["type"] {
+		case "typing":
+			var typing TypingMessage
+			if err := json.Unmarshal(msg, &typing); err != nil {
+				log.Println("Error decoding typing message:", err)
+				continue
+			}
+			sendTypingIndicator(userID, typing.To, typing.Status)
+		default:
+			fmt.Printf("Received unhandled: %s\n", msg)
+		}
 	}
 }
 
-func GetOnlineUsers() (map[string]bool, map[string]string) {
-	online := make(map[string]bool)
-	all := make(map[string]string)
+func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
+	onlineUsers := make(map[string]bool)
+	allUsers := make(map[string]string)
 
 	rows, err := g.DB.Query("SELECT id, username FROM users")
 	if err != nil {
-		log.Println("Database error fetching users:", err)
+		log.Println("Error selecting users:", err)
 		return nil, nil
 	}
 	defer rows.Close()
@@ -75,31 +97,31 @@ func GetOnlineUsers() (map[string]bool, map[string]string) {
 			log.Println("Error scanning user:", err)
 			continue
 		}
-		online[id] = false
-		all[id] = name
+		onlineUsers[id] = false
+		allUsers[id] = name
 	}
 
 	g.ActiveConnectionsMutex.RLock()
 	for id := range g.ActiveConnections {
-		online[id] = true
+		onlineUsers[id] = true
 	}
 	g.ActiveConnectionsMutex.RUnlock()
 
-	return online, all
+	return onlineUsers, allUsers
 }
 
 func BroadcastUserStatus() {
-	online, all := GetOnlineUsers()
-	if online == nil || all == nil {
+	onlineUsers, allUsers := GetOnlineUsers("")
+	if onlineUsers == nil || allUsers == nil {
 		return
 	}
 
 	var userList []map[string]interface{}
-	for id, name := range all {
+	for id, name := range allUsers {
 		userList = append(userList, map[string]interface{}{
 			"id":       id,
 			"username": name,
-			"online":   online[id],
+			"online":   onlineUsers[id],
 		})
 	}
 
@@ -114,7 +136,7 @@ func BroadcastUserStatus() {
 func BroadcastToAllUsers(update interface{}) {
 	jsonUpdate, err := json.Marshal(update)
 	if err != nil {
-		log.Println("Error marshaling broadcast:", err)
+		log.Println("Error marshaling update:", err)
 		return
 	}
 
@@ -127,7 +149,35 @@ func BroadcastToAllUsers(update interface{}) {
 		conn.WriteMu.Unlock()
 
 		if err != nil {
-			log.Println("Error sending to user", userID, ":", err)
+			log.Println("Error writing to user", userID, ":", err)
 		}
+	}
+}
+
+func sendTypingIndicator(from, to, status string) {
+	g.ActiveConnectionsMutex.RLock()
+	receiverConn, ok := g.ActiveConnections[to]
+	g.ActiveConnectionsMutex.RUnlock()
+
+	if !ok {
+		log.Println("Receiver not connected:", to)
+		return
+	}
+
+	msg := map[string]string{
+		"type":   "typing",
+		"from":   from,
+		"status": status,
+	}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		log.Println("Error marshaling typing msg:", err)
+		return
+	}
+
+	receiverConn.WriteMu.Lock()
+	defer receiverConn.WriteMu.Unlock()
+	if err := receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg); err != nil {
+		log.Println("Error sending typing msg:", err)
 	}
 }
