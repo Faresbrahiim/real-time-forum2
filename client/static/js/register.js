@@ -109,7 +109,7 @@ async function handleLogIn(event) {
         const result = await response.json();
 
         if (result.success) {
-            window.afterLogin();
+            window.afterLogin(); // call it here 
             successDiv.textContent = result.message;
             successDiv.style.display = 'block';                
             setTimeout(() => {

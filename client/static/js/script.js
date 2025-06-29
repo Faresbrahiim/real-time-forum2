@@ -12,9 +12,11 @@ function connectWebSocket() {
     ws.onopen = () => {
         console.log("WebSocket connected");
     };
-
+    // if msg is sent  from server ...
+    // 
     ws.onmessage = (event) => {
         try {
+            // parse ... make the 
             const msg = JSON.parse(event.data);
             switch (msg.type) {
                 case "user_status":
@@ -51,16 +53,20 @@ window.sendMessage = function () {
 function displayUserStatus(users) {
     const container = document.getElementById("userList");
     if (!container) return;
+    // clear old one..
     container.innerHTML = "";
 
     users.forEach(user => {
+        // create a div
         const userDiv = document.createElement("div");
+        // give it a classe name... user online  or user offline ...
         userDiv.className = `user ${user.online ? "online" : "offline"}`;
-
+        // create a div for it's  status ....
         const status = document.createElement("div");
+        // give it a class name ... status-indicator....
         status.className = "status-indicator";
         status.textContent = user.online ? "🟢" : "⚪";
-
+        // create button for each user 
         const button = document.createElement("button");
         button.textContent = user.username;
         button.className = "username-button";
@@ -74,10 +80,11 @@ function displayUserStatus(users) {
     });
 }
 
-window.addEventListener("load", () => {
-    connectWebSocket();
-});
+// window.addEventListener("load", () => {
+//     connectWebSocket();
+// });
 
+//  declare a function   named after login that will be called right after login happned sussesfully 
 window.afterLogin = function () {
     connectWebSocket();
 };
