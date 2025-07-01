@@ -1,5 +1,6 @@
 export let ws;
-import { startChatWith, handleTypingIndicator } from './chat.js';
+
+import { chatState, startChatWith, handleTypingIndicator } from './chat.js';
 
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -12,11 +13,9 @@ function connectWebSocket() {
     ws.onopen = () => {
         console.log("WebSocket connected");
     };
-    // if msg is sent  from server ...
-    // 
+
     ws.onmessage = (event) => {
         try {
-            // parse ... make the 
             const msg = JSON.parse(event.data);
             switch (msg.type) {
                 case "user_status":
@@ -24,6 +23,9 @@ function connectWebSocket() {
                     break;
                 case "typing":
                     handleTypingIndicator(msg.from, msg.status);
+                    break;
+                case "message":
+                    handleIncomingMessage(msg);
                     break;
                 default:
                     console.log("Unhandled message:", msg);
@@ -39,34 +41,41 @@ function connectWebSocket() {
 }
 
 window.sendMessage = function () {
-    const input = document.getElementById("msgInput");
-    if (input.value && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: "message",
-            content: input.value
-        }));
-        document.getElementById("chatLog").textContent += "You: " + input.value + "\n";
-        input.value = "";
-    }
+    const input = document.getElementById("chatInput");
+    const messageText = input.value.trim();
+    if (!messageText || !chatState.currentChatUserId || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(JSON.stringify({
+        type: "message",
+        to: chatState.currentChatUserId,
+        content: messageText
+    }));
+
+
+    const chatMessages = document.getElementById("chatMessages");
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message sent";
+    msgDiv.textContent = `You: ${messageText}`;
+    chatMessages.appendChild(msgDiv);
+
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Clear input
+    input.value = "";
 };
 
 function displayUserStatus(users) {
     const container = document.getElementById("userList");
     if (!container) return;
-    // clear old one..
     container.innerHTML = "";
 
     users.forEach(user => {
-        // create a div
         const userDiv = document.createElement("div");
-        // give it a classe name... user online  or user offline ...
         userDiv.className = `user ${user.online ? "online" : "offline"}`;
-        // create a div for it's  status ....
         const status = document.createElement("div");
-        // give it a class name ... status-indicator....
         status.className = "status-indicator";
         status.textContent = user.online ? "🟢" : "⚪";
-        // create button for each user 
         const button = document.createElement("button");
         button.textContent = user.username;
         button.className = "username-button";
@@ -80,11 +89,34 @@ function displayUserStatus(users) {
     });
 }
 
-// window.addEventListener("load", () => {
-//     connectWebSocket();
-// });
 
-//  declare a function   named after login that will be called right after login happned sussesfully 
 window.afterLogin = function () {
     connectWebSocket();
 };
+
+
+function handleIncomingMessage(msg) {
+    console.log("Incoming:", msg);
+
+    if (msg.from === chatState.currentChatUserId) {
+        console.log("hhhhhhhh",chatState.currentChatUserId);
+        
+        const chatMessages = document.getElementById("chatMessages");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "message received";
+        msgDiv.textContent = msg.content;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    } else {
+        console.log("New message from another user:", msg.from);
+        // Optional: show notification or badge here
+    }
+}
+
+
+
+
+
+document.getElementById("sendChat").addEventListener("click", () => {
+    window.sendMessage();
+});

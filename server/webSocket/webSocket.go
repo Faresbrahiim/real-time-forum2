@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	g "forum/server/global"
 	session "forum/server/session"
@@ -16,6 +17,12 @@ type TypingMessage struct {
 	Type   string `json:"type"`
 	To     string `json:"to"`
 	Status string `json:"status"`
+}
+
+type MessagePayload struct {
+	Type    string `json:"type"`
+	To      string `json:"to"`
+	Content string `json:"content"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -68,12 +75,18 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		switch base["type"] {
 		case "typing":
-			var typing TypingMessage
-			if err := json.Unmarshal(msg, &typing); err != nil {
-				log.Println("Error decoding typing message:", err)
-				continue
+			{
+				var typing TypingMessage
+				if err := json.Unmarshal(msg, &typing); err != nil {
+					log.Println("Error decoding typing message:", err)
+					continue
+				}
+				sendTypingIndicator(userID, typing.To, typing.Status)
 			}
-			sendTypingIndicator(userID, typing.To, typing.Status)
+		case "message":
+			{
+				handleIncomingMessage(userID, msg)
+			}
 		default:
 			fmt.Printf("Received unhandled: %s\n", msg)
 		}
@@ -179,5 +192,106 @@ func sendTypingIndicator(from, to, status string) {
 	defer receiverConn.WriteMu.Unlock()
 	if err := receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg); err != nil {
 		log.Println("Error sending typing msg:", err)
+	}
+}
+
+func handleIncomingMessage(senderID string, msg []byte) {
+	var payload MessagePayload
+	if err := json.Unmarshal(msg, &payload); err != nil {
+		log.Println("Invalid message payload:", err)
+		return
+	}
+
+	receiverID := payload.To
+	content := payload.Content
+
+	// 1. Get or create conversation
+	convoID, err := getOrCreateConversation(senderID, receiverID)
+	if err != nil {
+		log.Println("Error getting/creating conversation:", err)
+		return
+	}
+
+	// 2. Insert message into DB
+	_, err = g.DB.Exec(`
+		INSERT INTO Messages (id, conversation_id, sender_id, receiver_id, content, seen)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		g.GenerateUUID(), convoID, senderID, receiverID, content, false)
+	if err != nil {
+		log.Println("Error inserting message:", err)
+		return
+	}
+
+	// 3. Deliver message to receiver (next step)
+	deliverMessageToUser(senderID, receiverID, content, convoID)
+	fmt.Println(senderID, content, receiverID, "hahahahah")
+}
+
+func getOrCreateConversation(user1, user2 string) (string, error) {
+	var convoID string
+
+	// Try to find existing conversation in either direction
+	query := `
+		SELECT id FROM Conversations 
+		WHERE (user1_id = ? AND user2_id = ?) 
+		   OR (user1_id = ? AND user2_id = ?)
+	`
+	err := g.DB.QueryRow(query, user1, user2, user2, user1).Scan(&convoID)
+	if err == nil {
+		// Found existing
+		return convoID, nil
+	}
+
+	// Not found, create new
+	convoID = g.GenerateUUID()
+	_, err = g.DB.Exec(`
+		INSERT INTO Conversations (id, user1_id, user2_id)
+		VALUES (?, ?, ?)`,
+		convoID, user1, user2)
+	if err != nil {
+		return "", err
+	}
+
+	return convoID, nil
+}
+
+func deliverMessageToUser(senderID, receiverID, content, conversationID string) {
+	g.ActiveConnectionsMutex.RLock()
+	receiverConn, receiverOnline := g.ActiveConnections[receiverID]
+	senderConn, senderOnline := g.ActiveConnections[senderID]
+	g.ActiveConnectionsMutex.RUnlock()
+
+	messagePayload := map[string]interface{}{
+		"type":            "message",
+		"from":            senderID,
+		"content":         content,
+		"receiverId" :    receiverID,
+		"conversation_id": conversationID,
+		"sent_at":         time.Now().Format(time.RFC3339),
+	}
+
+	jsonMsg, err := json.Marshal(messagePayload)
+	if err != nil {
+		log.Println("Error marshaling message to deliver:", err)
+		return
+	}
+
+	if receiverOnline {
+		receiverConn.WriteMu.Lock()
+		err := receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+		receiverConn.WriteMu.Unlock()
+		if err != nil {
+			log.Println("Error sending message to receiver:", err)
+		}
+	}
+
+	// Optionally send back to sender (to confirm/send in UI)
+	if senderOnline {
+		senderConn.WriteMu.Lock()
+		err := senderConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+		senderConn.WriteMu.Unlock()
+		if err != nil {
+			log.Println("Error sending message back to sender:", err)
+		}
 	}
 }

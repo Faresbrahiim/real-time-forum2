@@ -15,6 +15,7 @@ window.addEventListener('storage', (event) => {
 async function checkSession() {
     console.log("Checking session status...");
     try {
+        
         const response = await fetch('/api/checksession');
         const result = await response.json();
 

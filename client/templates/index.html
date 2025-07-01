@@ -142,11 +142,18 @@
         <span id="chatUsername">Username</span>
         <button id="closeChat"  class="close-chat">✖</button>
     </div>
-    <div id="chatMessages" class="chat-messages"></div>
+    <div id="chatMessages" class="chat-messages">
+          <!-- <div class="message sent">You: salam</div> -->
+         <div class="message received">him: wa 3alaykom salam</div>
+
+    </div>
+
     <div id="typingIndicator" style="visibility: hidden; font-style: italic; color: gray;"></div>
     <div class="chat-input-container">
-        <button id="sendChat" class="send-chat">➤</button>
+        <!-- <button id="sendChat" class="send-chat">➤</button> -->
         <input type="text" id="chatInput" placeholder="Type a message..." />
+        <button id="sendChat" class="send-chat">➤</button>
+
     </div>
     </div>
 
@@ -159,7 +166,7 @@
     <script type="module" src="/static/js/register.js"></script>
     <script type="module"  src="/static/js/posts.js"></script>
     <script type="module" src="/static/js/session.js"></script>
-     <script type="module" src="/static/js/script.js"></script>
+    <script type="module" src="/static/js/script.js"></script>
     </div>
 </body>
 </html>

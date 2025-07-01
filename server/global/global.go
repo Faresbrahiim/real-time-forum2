@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -40,11 +42,19 @@ type Comment struct {
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
 // ===
 type SafeConn struct {
 	Conn    *websocket.Conn
 	WriteMu sync.Mutex
 }
 
-var ActiveConnections = make(map[string]*SafeConn)
-var ActiveConnectionsMutex = sync.RWMutex{}
+var (
+	ActiveConnections      = make(map[string]*SafeConn)
+	ActiveConnectionsMutex = sync.RWMutex{}
+)
+
+// ------------------------------------------------
+func GenerateUUID() string {
+	return uuid.New().String()
+}
