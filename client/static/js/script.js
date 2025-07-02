@@ -1,6 +1,6 @@
 export let ws;
 
-import { chatState, startChatWith, handleTypingIndicator } from './chat.js';
+import { chatState, startChatWith } from './chat.js';
 
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {

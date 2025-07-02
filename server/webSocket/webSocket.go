@@ -242,7 +242,6 @@ func getOrCreateConversation(user1, user2 string) (string, error) {
 		return convoID, nil
 	}
 
-	// Not found, create new
 	convoID = g.GenerateUUID()
 	_, err = g.DB.Exec(`
 		INSERT INTO Conversations (id, user1_id, user2_id)
@@ -265,7 +264,7 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 		"type":            "message",
 		"from":            senderID,
 		"content":         content,
-		"receiverId" :    receiverID,
+		"receiverId":      receiverID,
 		"conversation_id": conversationID,
 		"sent_at":         time.Now().Format(time.RFC3339),
 	}
@@ -294,4 +293,65 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 			log.Println("Error sending message back to sender:", err)
 		}
 	}
+}
+
+func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("okkSSSSSSSSSSSSSSSSSSS")
+	userID, err := session.GetSessionUserID(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	targetID := r.URL.Query().Get("user_id")
+	if targetID == "" {
+		http.Error(w, "Missing user_id", http.StatusBadRequest)
+		return
+	}
+
+	convoID, err := getOrCreateConversation(userID, targetID)
+	fmt.Println("the conver id id", convoID)
+
+	if err != nil {
+		http.Error(w, "Failed to get conversation", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch all messages from the DB for that conversation
+	rows, err := g.DB.Query(`
+	SELECT sender_id, receiver_id, content, sent_at 
+	FROM Messages 
+	WHERE conversation_id = ? 
+	ORDER BY sent_at ASC
+	`, convoID)
+	if err != nil {
+		http.Error(w, "DB query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type Message struct {
+		From    string `json:"from"`
+		To      string `json:"to"`
+		Content string `json:"content"`
+		SentAt  string `json:"sent_at"`
+	}
+
+	var messages []Message
+
+	for rows.Next() {
+
+		var m Message
+		fmt.Println("sss", m)
+		var sentTime time.Time
+		if err := rows.Scan(&m.From, &m.To, &m.Content, &sentTime); err != nil {
+			log.Println("Error scanning message row:", err)
+			continue
+		}
+		m.SentAt = sentTime.Format(time.RFC3339)
+		messages = append(messages, m)
+	}
+	fmt.Println("messages are", messages)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(messages)
 }

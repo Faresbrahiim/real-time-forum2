@@ -3,19 +3,42 @@ export const chatState = {
   currentChatUserId: null,
 };
 
-export function startChatWith(userId, username) {
-  document.getElementById("chatMessages").innerHTML = ""; // clear old chat
-  document.getElementById("chatMessages").innerHTML = ""; // clear old chat
-  
+export async function startChatWith(userId, username) {
+  const chatMessages = document.getElementById("chatMessages");
+  chatMessages.innerHTML = "";
   chatState.currentChatUserId = userId;
+
+  try {
+    const response = await fetch(`/api/messages?user_id=${userId}`);
+    if (response.ok) {
+      const messages = await response.json();
+
+      messages.forEach(msg => {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${msg.from === userId ? "received" : "sent"}`;
+        msgDiv.textContent = `${msg.from === userId ? username +" :" : "You: "}${msg.content}`;
+
+        const time = document.createElement("div");
+        time.classList = "sent-time";
+        time.textContent = msg.sent_at.slice(11, 16);
+
+        msgDiv.appendChild(time); 
+        chatMessages.appendChild(msgDiv);
+      });
+
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  } catch (err) {
     
-  console.log("Start chat with:", username, "ID:", chatState.currentChatUserId);
+  }
 
   const chatSection = document.getElementById("chatBox");
   const closeBtn = document.getElementById("closeChat");
   chatSection.style.display = 'flex';
   document.getElementById("chatUsername").textContent = username;
+
   handleTypingToServer(userId);
+
   const newCloseBtn = closeBtn.cloneNode(true);
   closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
   newCloseBtn.addEventListener("click", () => {
@@ -24,37 +47,24 @@ export function startChatWith(userId, username) {
 }
 
 function handleTypingToServer(targetUserId) {
-    let typingTimeout;
-    const input = document.getElementById("chatInput");
+  let typingTimeout;
+  const input = document.getElementById("chatInput");
 
-    input.addEventListener("keydown", () => {
-        ws.send(JSON.stringify({
-            type: "typing",
-            to: targetUserId,
-            status: "start"
-        }));
+  input.addEventListener("keydown", () => {
+    ws.send(JSON.stringify({
+      type: "typing",
+      to: targetUserId,
+      status: "start"
+    }));
 
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            ws.send(JSON.stringify({
-                type: "typing",
-                to: targetUserId,
-                status: "stop"
-            }));
-        }, 2000);
-    });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      ws.send(JSON.stringify({
+        type: "typing",
+        to: targetUserId,
+        status: "stop"
+      }));
+    }, 2000);
+  });
 }
-
-export function handleTypingIndicator(id, status) {
-    const typingIndicator = document.getElementById("typingIndicator");
-    if (!typingIndicator) return;
-    if (status === "start") {
-        typingIndicator.textContent = "Typing...";
-        typingIndicator.style.visibility = "visible";
-    } else if (status === "stop") {
-        typingIndicator.style.visibility = "hidden";
-    }
-}
-
-
 

@@ -59,6 +59,8 @@ func main() {
 	http.HandleFunc("/api/createcomment/", h.Getcreatecomment)
 	http.HandleFunc("/api/comments/", h.Getcomments)
 
+	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
+
 	/////////// ---------------------------------------------------------
 	http.HandleFunc("/ws", ws.HandleWebSocket)
 
