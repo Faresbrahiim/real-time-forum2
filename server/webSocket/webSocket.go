@@ -13,12 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type TypingMessage struct {
-	Type   string `json:"type"`
-	To     string `json:"to"`
-	Status string `json:"status"`
-}
-
 type MessagePayload struct {
 	Type    string `json:"type"`
 	To      string `json:"to"`
@@ -71,7 +65,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Println("Invalid JSON from client")
 			continue
 		}
-
 		switch base["type"] {
 		case "message":
 			{
@@ -87,7 +80,7 @@ func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
 	onlineUsers := make(map[string]bool)
 	allUsers := make(map[string]string)
 
-	rows, err := g.DB.Query("SELECT id, username FROM users")
+	rows, err := g.DB.Query("SELECT id, username FROM users ORDER BY username ")
 	if err != nil {
 		log.Println("Error selecting users:", err)
 		return nil, nil
@@ -108,7 +101,6 @@ func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
 		onlineUsers[id] = true
 	}
 	g.ActiveConnectionsMutex.RUnlock()
-
 	return onlineUsers, allUsers
 }
 
@@ -156,8 +148,6 @@ func BroadcastToAllUsers(update interface{}) {
 	}
 }
 
-
-
 func handleIncomingMessage(senderID string, msg []byte) {
 	var payload MessagePayload
 	if err := json.Unmarshal(msg, &payload); err != nil {
@@ -182,12 +172,10 @@ func handleIncomingMessage(senderID string, msg []byte) {
 		return
 	}
 	deliverMessageToUser(senderID, receiverID, content, convoID)
-	
 }
 
 func getOrCreateConversation(user1, user2 string) (string, error) {
 	var convoID string
-
 
 	query := `
 		SELECT id FROM Conversations 
@@ -223,9 +211,9 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 		"content":         content,
 		"receiverId":      receiverID,
 		"conversation_id": conversationID,
-		"sent_at":         time.Now().Format(time.RFC3339),
+		"sent_at":         time.Now().Format("15:04"),
 	}
-
+	fmt.Println("lw9t", "sent_at", time.Now().Format("15:04"))
 	jsonMsg, err := json.Marshal(messagePayload)
 	if err != nil {
 		log.Println("Error marshaling message to deliver:", err)
@@ -305,7 +293,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		m.SentAt = sentTime.Format(time.RFC3339)
 		messages = append(messages, m)
 	}
-	
+
 	fmt.Println("messages are", messages)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(messages)

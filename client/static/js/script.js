@@ -89,15 +89,23 @@ function displayUserStatus(users) {
 function handleIncomingMessage(msg) {
     if (msg.from === chatState.currentChatUserId) {
         const chatMessages = document.getElementById("chatMessages");
+
         const msgDiv = document.createElement("div");
         msgDiv.className = "message received";
         msgDiv.textContent = msg.content;
+
+        const time = document.createElement("div");
+        time.className = "sent-time";
+        time.textContent = msg.sent_at || "";
+
+        msgDiv.appendChild(time);
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } else {
         console.log("New message from another user:", msg.from);
     }
 }
+
 
 document.getElementById("sendChat").addEventListener("click", () => {
     window.sendMessage();
@@ -118,5 +126,5 @@ window.afterLogin = function () {
 
 
 window.addEventListener('load', () => {
-  connectWebSocket();
+    connectWebSocket();
 });
