@@ -78,28 +78,16 @@ function displayUserStatus(users) {
         button.onclick = () => {
             startChatWith(user.id, user.username);
         };
-
         userDiv.appendChild(button);
         container.appendChild(userDiv);
 
-
-        userDiv.appendChild(button);
-        container.appendChild(userDiv);
     });
 }
 
 
-window.afterLogin = function () {
-    connectWebSocket();
-};
-
 
 function handleIncomingMessage(msg) {
-    console.log("Incoming:", msg);
-
     if (msg.from === chatState.currentChatUserId) {
-        console.log("hhhhhhhh", chatState.currentChatUserId);
-
         const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
         msgDiv.className = "message received";
@@ -108,17 +96,27 @@ function handleIncomingMessage(msg) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } else {
         console.log("New message from another user:", msg.from);
-        // Optional: show notification or badge here
     }
 }
-
-
-
-
 
 document.getElementById("sendChat").addEventListener("click", () => {
     window.sendMessage();
 });
 
+document.getElementById("chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        window.sendMessage();
+    }
+});
 
-///
+
+
+
+window.afterLogin = function () {
+    connectWebSocket();
+};
+
+
+window.addEventListener('load', () => {
+  connectWebSocket();
+});

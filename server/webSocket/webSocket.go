@@ -39,7 +39,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"status": %d, "message": "You must be logged in"}`, http.StatusUnauthorized)
 		return
 	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Upgrade error:", err)
@@ -74,15 +73,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch base["type"] {
-		case "typing":
-			{
-				var typing TypingMessage
-				if err := json.Unmarshal(msg, &typing); err != nil {
-					log.Println("Error decoding typing message:", err)
-					continue
-				}
-				sendTypingIndicator(userID, typing.To, typing.Status)
-			}
 		case "message":
 			{
 				handleIncomingMessage(userID, msg)
@@ -113,7 +103,6 @@ func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
 		onlineUsers[id] = false
 		allUsers[id] = name
 	}
-
 	g.ActiveConnectionsMutex.RLock()
 	for id := range g.ActiveConnections {
 		onlineUsers[id] = true
@@ -167,33 +156,7 @@ func BroadcastToAllUsers(update interface{}) {
 	}
 }
 
-func sendTypingIndicator(from, to, status string) {
-	g.ActiveConnectionsMutex.RLock()
-	receiverConn, ok := g.ActiveConnections[to]
-	g.ActiveConnectionsMutex.RUnlock()
 
-	if !ok {
-		log.Println("Receiver not connected:", to)
-		return
-	}
-
-	msg := map[string]string{
-		"type":   "typing",
-		"from":   from,
-		"status": status,
-	}
-	jsonMsg, err := json.Marshal(msg)
-	if err != nil {
-		log.Println("Error marshaling typing msg:", err)
-		return
-	}
-
-	receiverConn.WriteMu.Lock()
-	defer receiverConn.WriteMu.Unlock()
-	if err := receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg); err != nil {
-		log.Println("Error sending typing msg:", err)
-	}
-}
 
 func handleIncomingMessage(senderID string, msg []byte) {
 	var payload MessagePayload
@@ -205,14 +168,11 @@ func handleIncomingMessage(senderID string, msg []byte) {
 	receiverID := payload.To
 	content := payload.Content
 
-	// 1. Get or create conversation
 	convoID, err := getOrCreateConversation(senderID, receiverID)
 	if err != nil {
 		log.Println("Error getting/creating conversation:", err)
 		return
 	}
-
-	// 2. Insert message into DB
 	_, err = g.DB.Exec(`
 		INSERT INTO Messages (id, conversation_id, sender_id, receiver_id, content, seen)
 		VALUES (?, ?, ?, ?, ?, ?)`,
@@ -221,16 +181,14 @@ func handleIncomingMessage(senderID string, msg []byte) {
 		log.Println("Error inserting message:", err)
 		return
 	}
-
-	// 3. Deliver message to receiver (next step)
 	deliverMessageToUser(senderID, receiverID, content, convoID)
-	fmt.Println(senderID, content, receiverID, "hahahahah")
+	
 }
 
 func getOrCreateConversation(user1, user2 string) (string, error) {
 	var convoID string
 
-	// Try to find existing conversation in either direction
+
 	query := `
 		SELECT id FROM Conversations 
 		WHERE (user1_id = ? AND user2_id = ?) 
@@ -238,7 +196,6 @@ func getOrCreateConversation(user1, user2 string) (string, error) {
 	`
 	err := g.DB.QueryRow(query, user1, user2, user2, user1).Scan(&convoID)
 	if err == nil {
-		// Found existing
 		return convoID, nil
 	}
 
@@ -296,7 +253,6 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 }
 
 func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("okkSSSSSSSSSSSSSSSSSSS")
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -316,8 +272,6 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get conversation", http.StatusInternalServerError)
 		return
 	}
-
-	// Fetch all messages from the DB for that conversation
 	rows, err := g.DB.Query(`
 	SELECT sender_id, receiver_id, content, sent_at 
 	FROM Messages 
@@ -351,6 +305,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		m.SentAt = sentTime.Format(time.RFC3339)
 		messages = append(messages, m)
 	}
+	
 	fmt.Println("messages are", messages)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(messages)

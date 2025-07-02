@@ -25,8 +25,6 @@ export async function startChatWith(userId, username) {
         msgDiv.appendChild(time); 
         chatMessages.appendChild(msgDiv);
       });
-
-      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
   } catch (err) {
     

@@ -106,13 +106,6 @@
     border-bottom-right-radius: 8px;
 }
 
-/* Typing indicator */
-#typingIndicator {
-    padding: 5px 10px;
-    font-style: italic;
-    color: gray;
-    font-size: 12px;
-}
 
 
 .sent-time {
