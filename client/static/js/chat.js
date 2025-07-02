@@ -5,6 +5,8 @@ export const chatState = {
 
 export async function startChatWith(userId, username) {
   const chatMessages = document.getElementById("chatMessages");
+  const input = document.getElementById("chatInput")
+  input.value = "" ;
   chatMessages.innerHTML = "";
   chatState.currentChatUserId = userId;
 

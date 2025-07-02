@@ -19,6 +19,12 @@ type MessagePayload struct {
 	Content string `json:"content"`
 }
 
+type UserStatus struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Online   bool   `json:"online"`
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -67,61 +73,55 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		switch base["type"] {
 		case "message":
-			{
-				handleIncomingMessage(userID, msg)
-			}
+			handleIncomingMessage(userID, msg)
 		default:
 			fmt.Printf("Received unhandled: %s\n", msg)
 		}
 	}
 }
 
-func GetOnlineUsers(_ string) (map[string]bool, map[string]string) {
-	onlineUsers := make(map[string]bool)
-	allUsers := make(map[string]string)
+func GetOnlineUsers() []UserStatus {
+	var users []UserStatus
 
-	rows, err := g.DB.Query("SELECT id, username FROM users ORDER BY username ")
+	rows, err := g.DB.Query("SELECT id, username FROM users ORDER BY username")
 	if err != nil {
 		log.Println("Error selecting users:", err)
-		return nil, nil
+		return nil
 	}
 	defer rows.Close()
 
+	onlineMap := make(map[string]bool)
+	g.ActiveConnectionsMutex.RLock()
+	for id := range g.ActiveConnections {
+		onlineMap[id] = true
+	}
+	g.ActiveConnectionsMutex.RUnlock()
+
 	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
+		var id, username string
+		if err := rows.Scan(&id, &username); err != nil {
 			log.Println("Error scanning user:", err)
 			continue
 		}
-		onlineUsers[id] = false
-		allUsers[id] = name
+		users = append(users, UserStatus{
+			ID:       id,
+			Username: username,
+			Online:   onlineMap[id],
+		})
 	}
-	g.ActiveConnectionsMutex.RLock()
-	for id := range g.ActiveConnections {
-		onlineUsers[id] = true
-	}
-	g.ActiveConnectionsMutex.RUnlock()
-	return onlineUsers, allUsers
+
+	return users
 }
 
 func BroadcastUserStatus() {
-	onlineUsers, allUsers := GetOnlineUsers("")
-	if onlineUsers == nil || allUsers == nil {
+	users := GetOnlineUsers()
+	if users == nil {
 		return
-	}
-
-	var userList []map[string]interface{}
-	for id, name := range allUsers {
-		userList = append(userList, map[string]interface{}{
-			"id":       id,
-			"username": name,
-			"online":   onlineUsers[id],
-		})
 	}
 
 	update := map[string]interface{}{
 		"type": "user_status",
-		"data": userList,
+		"data": users,
 	}
 
 	BroadcastToAllUsers(update)
@@ -180,8 +180,7 @@ func getOrCreateConversation(user1, user2 string) (string, error) {
 	query := `
 		SELECT id FROM Conversations 
 		WHERE (user1_id = ? AND user2_id = ?) 
-		   OR (user1_id = ? AND user2_id = ?)
-	`
+		   OR (user1_id = ? AND user2_id = ?)`
 	err := g.DB.QueryRow(query, user1, user2, user2, user1).Scan(&convoID)
 	if err == nil {
 		return convoID, nil
@@ -190,8 +189,7 @@ func getOrCreateConversation(user1, user2 string) (string, error) {
 	convoID = g.GenerateUUID()
 	_, err = g.DB.Exec(`
 		INSERT INTO Conversations (id, user1_id, user2_id)
-		VALUES (?, ?, ?)`,
-		convoID, user1, user2)
+		VALUES (?, ?, ?)`, convoID, user1, user2)
 	if err != nil {
 		return "", err
 	}
@@ -213,7 +211,7 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 		"conversation_id": conversationID,
 		"sent_at":         time.Now().Format("15:04"),
 	}
-	fmt.Println("lw9t", "sent_at", time.Now().Format("15:04"))
+
 	jsonMsg, err := json.Marshal(messagePayload)
 	if err != nil {
 		log.Println("Error marshaling message to deliver:", err)
@@ -229,7 +227,6 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 		}
 	}
 
-	// Optionally send back to sender (to confirm/send in UI)
 	if senderOnline {
 		senderConn.WriteMu.Lock()
 		err := senderConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
@@ -246,7 +243,6 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
 	targetID := r.URL.Query().Get("user_id")
 	if targetID == "" {
 		http.Error(w, "Missing user_id", http.StatusBadRequest)
@@ -254,18 +250,16 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	convoID, err := getOrCreateConversation(userID, targetID)
-	fmt.Println("the conver id id", convoID)
-
 	if err != nil {
 		http.Error(w, "Failed to get conversation", http.StatusInternalServerError)
 		return
 	}
+
 	rows, err := g.DB.Query(`
-	SELECT sender_id, receiver_id, content, sent_at 
-	FROM Messages 
-	WHERE conversation_id = ? 
-	ORDER BY sent_at ASC
-	`, convoID)
+		SELECT sender_id, receiver_id, content, sent_at 
+		FROM Messages 
+		WHERE conversation_id = ? 
+		ORDER BY sent_at ASC`, convoID)
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
 		return
@@ -280,21 +274,17 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var messages []Message
-
 	for rows.Next() {
-
 		var m Message
-		fmt.Println("sss", m)
 		var sentTime time.Time
 		if err := rows.Scan(&m.From, &m.To, &m.Content, &sentTime); err != nil {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Format(time.RFC3339)
+		m.SentAt = sentTime.Format("15:04")
 		messages = append(messages, m)
 	}
 
-	fmt.Println("messages are", messages)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(messages)
 }

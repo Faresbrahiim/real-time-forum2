@@ -61,7 +61,6 @@ func main() {
 
 	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
 
-	/////////// ---------------------------------------------------------
 	http.HandleFunc("/ws", ws.HandleWebSocket)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

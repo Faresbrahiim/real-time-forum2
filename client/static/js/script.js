@@ -58,7 +58,6 @@ window.sendMessage = function () {
     msgDiv.textContent = `You: ${messageText}`;
     chatMessages.appendChild(msgDiv);
 
-
     chatMessages.scrollTop = chatMessages.scrollHeight;
     input.value = "";
 };
@@ -75,12 +74,17 @@ function displayUserStatus(users) {
         const button = document.createElement("button");
         button.className = "username-button";
         button.innerHTML = `${user.online ? "🟢" : "⚪"} ${user.username}`;
+        const notifSpan = document.createElement("span");
+        notifSpan.id = `notif-${user.id}`;
+        notifSpan.textContent = "🔔";
+        notifSpan.style.display = "none"; 
+        button.appendChild(notifSpan);
         button.onclick = () => {
             startChatWith(user.id, user.username);
+            clearNotif(user.id);
         };
         userDiv.appendChild(button);
         container.appendChild(userDiv);
-
     });
 }
 
@@ -102,6 +106,7 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } else {
+        showNotif(msg.from);
         console.log("New message from another user:", msg.from);
     }
 }
@@ -128,3 +133,19 @@ window.afterLogin = function () {
 window.addEventListener('load', () => {
     connectWebSocket();
 });
+
+
+function clearNotif(userId) {
+    console.log(userId);
+    const notifSpan = document.getElementById(`notif-${userId}`);
+    if (notifSpan) {
+        notifSpan.style.display = "none";
+    }
+}
+
+function showNotif(userId) {
+    const notifSpan = document.getElementById(`notif-${userId}`);
+    if (notifSpan) {
+        notifSpan.style.display = "inline";  
+    }
+}
