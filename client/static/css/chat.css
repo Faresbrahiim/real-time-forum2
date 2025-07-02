@@ -113,3 +113,11 @@
     color: gray;
     font-size: 12px;
 }
+
+
+.sent-time {
+    font-size: 10px;
+    margin-top: 6px;
+    font-weight: bold;
+    color: green;
+}

@@ -58,7 +58,7 @@ window.sendMessage = function () {
     msgDiv.textContent = `You: ${messageText}`;
     chatMessages.appendChild(msgDiv);
 
-    
+
     chatMessages.scrollTop = chatMessages.scrollHeight;
     input.value = "";
 };
@@ -71,17 +71,18 @@ function displayUserStatus(users) {
     users.forEach(user => {
         const userDiv = document.createElement("div");
         userDiv.className = `user ${user.online ? "online" : "offline"}`;
-        const status = document.createElement("div");
-        status.className = "status-indicator";
-        status.textContent = user.online ? "🟢" : "⚪";
+
         const button = document.createElement("button");
-        button.textContent = user.username;
         button.className = "username-button";
+        button.innerHTML = `${user.online ? "🟢" : "⚪"} ${user.username}`;
         button.onclick = () => {
             startChatWith(user.id, user.username);
         };
 
-        userDiv.appendChild(status);
+        userDiv.appendChild(button);
+        container.appendChild(userDiv);
+
+
         userDiv.appendChild(button);
         container.appendChild(userDiv);
     });
@@ -97,8 +98,8 @@ function handleIncomingMessage(msg) {
     console.log("Incoming:", msg);
 
     if (msg.from === chatState.currentChatUserId) {
-        console.log("hhhhhhhh",chatState.currentChatUserId);
-        
+        console.log("hhhhhhhh", chatState.currentChatUserId);
+
         const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
         msgDiv.className = "message received";
