@@ -58,10 +58,8 @@ window.sendMessage = function () {
     msgDiv.textContent = `You: ${messageText}`;
     chatMessages.appendChild(msgDiv);
 
-    // Scroll to bottom
+    
     chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    // Clear input
     input.value = "";
 };
 
@@ -120,3 +118,6 @@ function handleIncomingMessage(msg) {
 document.getElementById("sendChat").addEventListener("click", () => {
     window.sendMessage();
 });
+
+
+///

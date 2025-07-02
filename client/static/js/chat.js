@@ -4,6 +4,9 @@ export const chatState = {
 };
 
 export function startChatWith(userId, username) {
+  document.getElementById("chatMessages").innerHTML = ""; // clear old chat
+  document.getElementById("chatMessages").innerHTML = ""; // clear old chat
+  
   chatState.currentChatUserId = userId;
     
   console.log("Start chat with:", username, "ID:", chatState.currentChatUserId);
