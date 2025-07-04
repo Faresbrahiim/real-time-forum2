@@ -178,6 +178,7 @@ func handleIncomingMessage(senderID string, msg []byte) {
 		log.Println("Error inserting message:", err)
 		return
 	}
+
 	deliverMessageToUser(senderID, receiverID, content, convoID)
 }
 
@@ -318,12 +319,6 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		messages = append(messages, m)
 	}
 
-	// Reverse the messages to show oldest first within the page
-	// This way page 1 shows the most recent 10 messages in correct order
-	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-		messages[i], messages[j] = messages[j], messages[i]
-	}
-
 	// Calculate pagination info
 	totalPages := (totalMessages + limit - 1) / limit // Ceiling division
 	hasMore := pageNum < totalPages
@@ -360,7 +355,6 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the latest 10 messages
 	rows, err := g.DB.Query(`
         SELECT sender_id, receiver_id, content, sent_at 
         FROM Messages 
