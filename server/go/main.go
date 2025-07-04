@@ -59,7 +59,10 @@ func main() {
 	http.HandleFunc("/api/createcomment/", h.Getcreatecomment)
 	http.HandleFunc("/api/comments/", h.Getcomments)
 
+	// In your router setup
 	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
+	http.HandleFunc("/api/latest-messages", ws.GetLatestMessagesHandler) // Just latest 10
+	// http.HandleFunc("/api/messages", ws.GetMessagesHandler)
 
 	http.HandleFunc("/ws", ws.HandleWebSocket)
 

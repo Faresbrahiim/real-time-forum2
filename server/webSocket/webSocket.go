@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	g "forum/server/global"
@@ -23,6 +24,12 @@ type UserStatus struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	Online   bool   `json:"online"`
+}
+type Message struct {
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Content string `json:"content"`
+	SentAt  string `json:"sent_at"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -243,11 +250,27 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	targetID := r.URL.Query().Get("user_id")
 	if targetID == "" {
 		http.Error(w, "Missing user_id", http.StatusBadRequest)
 		return
 	}
+
+	// Get pagination parameters
+	page := r.URL.Query().Get("page")
+	if page == "" {
+		page = "1"
+	}
+
+	pageNum, err := strconv.Atoi(page)
+	if err != nil || pageNum < 1 {
+		http.Error(w, "Invalid page number", http.StatusBadRequest)
+		return
+	}
+
+	limit := 10
+	offset := (pageNum - 1) * limit
 
 	convoID, err := getOrCreateConversation(userID, targetID)
 	if err != nil {
@@ -255,11 +278,21 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var totalMessages int
+	err = g.DB.QueryRow(`
+		SELECT COUNT(*) FROM Messages 
+		WHERE conversation_id = ?`, convoID).Scan(&totalMessages)
+	if err != nil {
+		http.Error(w, "Failed to count messages", http.StatusInternalServerError)
+		return
+	}
+
 	rows, err := g.DB.Query(`
 		SELECT sender_id, receiver_id, content, sent_at 
 		FROM Messages 
 		WHERE conversation_id = ? 
-		ORDER BY sent_at ASC`, convoID)
+		ORDER BY sent_at DESC 
+		LIMIT ? OFFSET ?`, convoID, limit, offset)
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
 		return
@@ -285,6 +318,94 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		messages = append(messages, m)
 	}
 
+	// Reverse the messages to show oldest first within the page
+	// This way page 1 shows the most recent 10 messages in correct order
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	// Calculate pagination info
+	totalPages := (totalMessages + limit - 1) / limit // Ceiling division
+	hasMore := pageNum < totalPages
+
+	response := map[string]interface{}{
+		"messages":       messages,
+		"current_page":   pageNum,
+		"total_pages":    totalPages,
+		"total_messages": totalMessages,
+		"has_more":       hasMore,
+		"per_page":       limit,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+	json.NewEncoder(w).Encode(response)
+}
+
+func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err := session.GetSessionUserID(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	targetID := r.URL.Query().Get("user_id")
+	if targetID == "" {
+		http.Error(w, "Missing user_id", http.StatusBadRequest)
+		return
+	}
+
+	convoID, err := getOrCreateConversation(userID, targetID)
+	if err != nil {
+		http.Error(w, "Failed to get conversation", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the latest 10 messages
+	rows, err := g.DB.Query(`
+        SELECT sender_id, receiver_id, content, sent_at 
+        FROM Messages 
+        WHERE conversation_id = ? 
+        ORDER BY sent_at DESC 
+        LIMIT 10`, convoID)
+	if err != nil {
+		http.Error(w, "DB query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var m Message
+		var sentTime time.Time
+		if err := rows.Scan(&m.From, &m.To, &m.Content, &sentTime); err != nil {
+			log.Println("Error scanning message row:", err)
+			continue
+		}
+		m.SentAt = sentTime.Format("15:04")
+		messages = append(messages, m)
+	}
+
+	// Reverse to show chronological order (oldest first)
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	// Check if there are more messages (more efficient than counting all)
+	var hasMore bool
+	err = g.DB.QueryRow(`
+        SELECT COUNT(*) > 10 
+        FROM Messages 
+        WHERE conversation_id = ?`, convoID).Scan(&hasMore)
+	if err != nil {
+		log.Println("Error checking for more messages:", err)
+		hasMore = false
+	}
+
+	response := map[string]interface{}{
+		"messages": messages,
+		"has_more": hasMore,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

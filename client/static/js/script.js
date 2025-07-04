@@ -1,6 +1,6 @@
 export let ws;
 
-import { chatState, startChatWith } from './chat.js';
+import { chatState, startChatWith, addNewMessage } from './chat.js';
 
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -20,9 +20,6 @@ function connectWebSocket() {
             switch (msg.type) {
                 case "user_status":
                     displayUserStatus(msg.data);
-                    break;
-                case "typing":
-                    handleTypingIndicator(msg.from, msg.status);
                     break;
                 case "message":
                     handleIncomingMessage(msg);
@@ -51,14 +48,8 @@ window.sendMessage = function () {
         content: messageText
     }));
 
-
-    const chatMessages = document.getElementById("chatMessages");
-    const msgDiv = document.createElement("div");
-    msgDiv.className = "message sent";
-    msgDiv.textContent = `You: ${messageText}`;
-    chatMessages.appendChild(msgDiv);
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    // Don't add message to UI here - wait for server confirmation
+    // The server will send it back and we'll handle it in handleIncomingMessage
     input.value = "";
 };
 
@@ -88,12 +79,10 @@ function displayUserStatus(users) {
     });
 }
 
-
-
 function handleIncomingMessage(msg) {
+    // If this is a message for the current chat
     if (msg.from === chatState.currentChatUserId) {
         const chatMessages = document.getElementById("chatMessages");
-
         const msgDiv = document.createElement("div");
         msgDiv.className = "message received";
         msgDiv.textContent = msg.content;
@@ -105,12 +94,28 @@ function handleIncomingMessage(msg) {
         msgDiv.appendChild(time);
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-    } else {
+    } 
+    // If this is a message I sent (echo from server)
+    else if (msg.receiverId === chatState.currentChatUserId) {
+        const chatMessages = document.getElementById("chatMessages");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "message sent";
+        msgDiv.textContent = `You: ${msg.content}`;
+
+        const time = document.createElement("div");
+        time.className = "sent-time";
+        time.textContent = msg.sent_at || "";
+
+        msgDiv.appendChild(time);
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    } 
+    // Message from another user (not current chat)
+    else {
         showNotif(msg.from);
         console.log("New message from another user:", msg.from);
     }
 }
-
 
 document.getElementById("sendChat").addEventListener("click", () => {
     window.sendMessage();
@@ -122,18 +127,13 @@ document.getElementById("chatInput").addEventListener("keydown", (e) => {
     }
 });
 
-
-
-
 window.afterLogin = function () {
     connectWebSocket();
 };
 
-
 window.addEventListener('load', () => {
     connectWebSocket();
 });
-
 
 function clearNotif(userId) {
     console.log(userId);
