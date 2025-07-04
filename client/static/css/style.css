@@ -84,7 +84,10 @@ body {
     display: flex;
     margin-top: 15px;
     overflow: auto;
+    position: fixed;  
+
 }
+
 
 
 .user  {

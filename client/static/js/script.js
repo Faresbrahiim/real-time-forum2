@@ -1,19 +1,16 @@
 export let ws;
 
-import { chatState, startChatWith, addNewMessage } from './chat.js';
+import { chatState, startChatWith} from './chat.js';
 
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         console.log("WebSocket already connected");
         return;
     }
-
     ws = new WebSocket("ws://localhost:8080/ws");
-
     ws.onopen = () => {
         console.log("WebSocket connected");
     };
-
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
@@ -47,9 +44,7 @@ window.sendMessage = function () {
         to: chatState.currentChatUserId,
         content: messageText
     }));
-
-    // Don't add message to UI here - wait for server confirmation
-    // The server will send it back and we'll handle it in handleIncomingMessage
+    
     input.value = "";
 };
 
@@ -61,7 +56,6 @@ function displayUserStatus(users) {
     users.forEach(user => {
         const userDiv = document.createElement("div");
         userDiv.className = `user ${user.online ? "online" : "offline"}`;
-
         const button = document.createElement("button");
         button.className = "username-button";
         button.innerHTML = `${user.online ? "🟢" : "⚪"} ${user.username}`;
@@ -80,7 +74,6 @@ function displayUserStatus(users) {
 }
 
 function handleIncomingMessage(msg) {
-    // If this is a message for the current chat
     if (msg.from === chatState.currentChatUserId) {
         const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
@@ -95,7 +88,6 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } 
-    // If this is a message I sent (echo from server)
     else if (msg.receiverId === chatState.currentChatUserId) {
         const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
@@ -110,7 +102,6 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } 
-    // Message from another user (not current chat)
     else {
         showNotif(msg.from);
         console.log("New message from another user:", msg.from);

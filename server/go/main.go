@@ -48,10 +48,12 @@ func main() {
 	fs := http.FileServer(http.Dir(filepath.Join("client", "static")))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// Handlers
+	// autentification handlers
 	http.HandleFunc("/api/login", h.Getlogin)
 	http.HandleFunc("/api/signup", h.Getregister)
 	http.HandleFunc("/api/logout", h.Get)
+
+	// posts handlers
 	http.HandleFunc("/api/checksession", h.CheckSession)
 	http.HandleFunc("/api/createpost", h.Getcreatepost)
 	http.HandleFunc("/api/posts", h.Getposts)
@@ -59,12 +61,13 @@ func main() {
 	http.HandleFunc("/api/createcomment/", h.Getcreatecomment)
 	http.HandleFunc("/api/comments/", h.Getcomments)
 
-	// In your router setup
-	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
-	http.HandleFunc("/api/latest-messages", ws.GetLatestMessagesHandler) // Just latest 10
-	// http.HandleFunc("/api/messages", ws.GetMessagesHandler)
 
+	// ws handllers
+	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
+	http.HandleFunc("/api/latest-messages", ws.GetLatestMessagesHandler)
 	http.HandleFunc("/ws", ws.HandleWebSocket)
+
+
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err := tmpl.Execute(w, nil)

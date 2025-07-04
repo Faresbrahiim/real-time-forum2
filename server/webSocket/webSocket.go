@@ -25,6 +25,7 @@ type UserStatus struct {
 	Username string `json:"username"`
 	Online   bool   `json:"online"`
 }
+
 type Message struct {
 	From    string `json:"from"`
 	To      string `json:"to"`
@@ -55,7 +56,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	g.ActiveConnectionsMutex.Lock()
 	g.ActiveConnections[userID] = &g.SafeConn{Conn: conn}
 	g.ActiveConnectionsMutex.Unlock()
-
 	BroadcastUserStatus()
 
 	defer func() {
@@ -125,7 +125,6 @@ func BroadcastUserStatus() {
 	if users == nil {
 		return
 	}
-
 	update := map[string]interface{}{
 		"type": "user_status",
 		"data": users,
@@ -156,6 +155,7 @@ func BroadcastToAllUsers(update interface{}) {
 }
 
 func handleIncomingMessage(senderID string, msg []byte) {
+
 	var payload MessagePayload
 	if err := json.Unmarshal(msg, &payload); err != nil {
 		log.Println("Invalid message payload:", err)
@@ -258,7 +258,6 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get pagination parameters
 	page := r.URL.Query().Get("page")
 	if page == "" {
 		page = "1"
@@ -335,6 +334,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
 
 func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)

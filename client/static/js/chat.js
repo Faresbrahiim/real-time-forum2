@@ -8,6 +8,26 @@ export const chatState = {
   totalMessages: 0,
 };
 
+// Throttle function to prevent excessive scroll event firing
+function throttle(func, delay) {
+  let timeoutId;
+  let lastExecTime = 0;
+  return function (...args) {
+    const currentTime = Date.now();
+    
+    if (currentTime - lastExecTime > delay) {
+      func.apply(this, args);
+      lastExecTime = currentTime;
+    } else {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        func.apply(this, args);
+        lastExecTime = Date.now();
+      }, delay - (currentTime - lastExecTime));
+    }
+  };
+}
+
 export async function startChatWith(userId, username) {
   const chatMessages = document.getElementById("chatMessages");
   const input = document.getElementById("chatInput");
@@ -54,7 +74,9 @@ export async function startChatWith(userId, username) {
     chatSection.style.display = 'none';
     // Remove scroll listener when closing chat
     const chatMessages = document.getElementById("chatMessages");
-    chatMessages.removeEventListener("scroll", chatMessages.scrollHandler);
+    if (chatMessages.scrollHandler) {
+      chatMessages.removeEventListener("scroll", chatMessages.scrollHandler);
+    }
   });
 }
 
@@ -66,13 +88,15 @@ function setupScrollListener(userId, username) {
     chatMessages.removeEventListener("scroll", chatMessages.scrollHandler);
   }
   
-  chatMessages.scrollHandler = async function() {
+  // Create throttled scroll handler (300ms delay)
+  const throttledScrollHandler = throttle(async function() {
     // Check if user scrolled to top and there are more messages
     if (chatMessages.scrollTop === 0 && chatState.hasMore && !chatState.isLoading) {
       await loadMoreMessages(userId, username);
     }
-  };
+  }, 500);
   
+  chatMessages.scrollHandler = throttledScrollHandler;
   chatMessages.addEventListener("scroll", chatMessages.scrollHandler);
 }
 
@@ -93,7 +117,7 @@ async function loadMoreMessages(userId, username) {
   
   try {
     const nextPage = chatState.currentPage + 1;
-    const response = await fetch(`/api/messages?user_id=${userId}&page=${nextPage}`);
+    const response = await fetch(`/api/messages?user_id=${userId}&page=${nextPage}&limit=10`);
     
     if (response.ok) {
       const data = await response.json();
@@ -105,7 +129,7 @@ async function loadMoreMessages(userId, username) {
         // Remember scroll position before adding messages
         const oldScrollHeight = chatMessages.scrollHeight;
         
-        // Add older messages to the top
+        // Add older messages to the top (load 10 more messages)
         displayMessages(data.messages, username, true); // true = prepend
         
         // Update state
