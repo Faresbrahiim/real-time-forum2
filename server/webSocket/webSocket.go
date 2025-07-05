@@ -440,9 +440,9 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Reverse to show chronological order (oldest first)
-	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-		messages[i], messages[j] = messages[j], messages[i]
-	}
+	// for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+	// 	messages[i], messages[j] = messages[j], messages[i]
+	// }
 
 	// DEBUG: Log final message order after reversal
 	fmt.Printf("🔥 DEBUG: GetLatest - Final message order after reversal:\n")
