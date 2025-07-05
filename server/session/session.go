@@ -43,6 +43,7 @@ func SetSession(w http.ResponseWriter, userID string) (string, time.Time) {
 	return sessionId, expiration
 }
 
+
 // GetSessionUsername returns the user ID from in-memory session store
 func GetSessionUsername(r *http.Request) (string, bool) {
 	cookie, err := r.Cookie("session_id")

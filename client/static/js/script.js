@@ -1,6 +1,6 @@
 export let ws;
 
-import { chatState, startChatWith} from './chat.js';
+import { chatState, startChatWith } from './chat.js';
 
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -8,9 +8,11 @@ function connectWebSocket() {
         return;
     }
     ws = new WebSocket("ws://localhost:8080/ws");
+
     ws.onopen = () => {
         console.log("WebSocket connected");
     };
+
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
@@ -44,7 +46,7 @@ window.sendMessage = function () {
         to: chatState.currentChatUserId,
         content: messageText
     }));
-    
+
     input.value = "";
 };
 
@@ -62,7 +64,7 @@ function displayUserStatus(users) {
         const notifSpan = document.createElement("span");
         notifSpan.id = `notif-${user.id}`;
         notifSpan.textContent = "🔔";
-        notifSpan.style.display = "none"; 
+        notifSpan.style.display = "none";
         button.appendChild(notifSpan);
         button.onclick = () => {
             startChatWith(user.id, user.username);
@@ -72,7 +74,7 @@ function displayUserStatus(users) {
         container.appendChild(userDiv);
     });
 }
-
+let c =0
 function handleIncomingMessage(msg) {
     if (msg.from === chatState.currentChatUserId) {
         const chatMessages = document.getElementById("chatMessages");
@@ -87,7 +89,7 @@ function handleIncomingMessage(msg) {
         msgDiv.appendChild(time);
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-    } 
+    }
     else if (msg.receiverId === chatState.currentChatUserId) {
         const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
@@ -101,9 +103,10 @@ function handleIncomingMessage(msg) {
         msgDiv.appendChild(time);
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-    } 
+    }
     else {
         showNotif(msg.from);
+        console.log("1",c++)
         console.log("New message from another user:", msg.from);
     }
 }
@@ -122,9 +125,15 @@ window.afterLogin = function () {
     connectWebSocket();
 };
 
-window.addEventListener('load', () => {
-    connectWebSocket();
+window.addEventListener('load', async () => {
+    const response = await fetch('/api/checksession');
+    const result = await response.json();
+    if (result.loggedIn) {
+        window.currentUsername = result.username; 
+        connectWebSocket();
+    }
 });
+
 
 function clearNotif(userId) {
     console.log(userId);
@@ -137,6 +146,6 @@ function clearNotif(userId) {
 function showNotif(userId) {
     const notifSpan = document.getElementById(`notif-${userId}`);
     if (notifSpan) {
-        notifSpan.style.display = "inline";  
+        notifSpan.style.display = "inline";
     }
 }

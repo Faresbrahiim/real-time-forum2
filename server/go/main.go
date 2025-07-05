@@ -61,13 +61,10 @@ func main() {
 	http.HandleFunc("/api/createcomment/", h.Getcreatecomment)
 	http.HandleFunc("/api/comments/", h.Getcomments)
 
-
-	// ws handllers
+	// chat handlers
 	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
 	http.HandleFunc("/api/latest-messages", ws.GetLatestMessagesHandler)
 	http.HandleFunc("/ws", ws.HandleWebSocket)
-
-
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err := tmpl.Execute(w, nil)

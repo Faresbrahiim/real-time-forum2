@@ -66,7 +66,6 @@ export async function startChatWith(userId, username) {
   // Setup scroll listener for pagination
   setupScrollListener(userId, username);
   
-  handleTypingToServer(userId);
 
   const newCloseBtn = closeBtn.cloneNode(true);
   closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
@@ -77,6 +76,7 @@ export async function startChatWith(userId, username) {
     if (chatMessages.scrollHandler) {
       chatMessages.removeEventListener("scroll", chatMessages.scrollHandler);
     }
+    chatState.currentChatUserId = null
   });
 }
 
@@ -180,27 +180,6 @@ function displayMessages(messages, username, prepend = false) {
   });
 }
 
-function handleTypingToServer(targetUserId) {
-  let typingTimeout;
-  const input = document.getElementById("chatInput");
-
-  input.addEventListener("keydown", () => {
-    ws.send(JSON.stringify({
-      type: "typing",
-      to: targetUserId,
-      status: "start"
-    }));
-
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      ws.send(JSON.stringify({
-        type: "typing",
-        to: targetUserId,
-        status: "stop"
-      }));
-    }, 2000);
-  });
-}
 
 // Helper function to add new real-time messages
 export function addNewMessage(msg, username) {

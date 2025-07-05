@@ -87,10 +87,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetOnlineUsers() []UserStatus {
+// Updated function to exclude current user
+func GetOnlineUsers(excludeUserID string) []UserStatus {
 	var users []UserStatus
 
-	rows, err := g.DB.Query("SELECT id, username FROM users ORDER BY username")
+	rows, err := g.DB.Query("SELECT id, username FROM users WHERE id != ? ORDER BY username", excludeUserID)
 	if err != nil {
 		log.Println("Error selecting users:", err)
 		return nil
@@ -120,17 +121,37 @@ func GetOnlineUsers() []UserStatus {
 	return users
 }
 
+// Updated function to send personalized user status to each user
 func BroadcastUserStatus() {
-	users := GetOnlineUsers()
-	if users == nil {
-		return
-	}
-	update := map[string]interface{}{
-		"type": "user_status",
-		"data": users,
-	}
+	g.ActiveConnectionsMutex.RLock()
+	defer g.ActiveConnectionsMutex.RUnlock()
 
-	BroadcastToAllUsers(update)
+	for userID, conn := range g.ActiveConnections {
+		// Get users list excluding the current user
+		users := GetOnlineUsers(userID)
+		if users == nil {
+			continue
+		}
+		
+		update := map[string]interface{}{
+			"type": "user_status",
+			"data": users,
+		}
+
+		jsonUpdate, err := json.Marshal(update)
+		if err != nil {
+			log.Println("Error marshaling update:", err)
+			continue
+		}
+
+		conn.WriteMu.Lock()
+		err = conn.Conn.WriteMessage(websocket.TextMessage, jsonUpdate)
+		conn.WriteMu.Unlock()
+
+		if err != nil {
+			log.Println("Error writing to user", userID, ":", err)
+		}
+	}
 }
 
 func BroadcastToAllUsers(update interface{}) {
