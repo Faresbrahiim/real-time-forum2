@@ -176,7 +176,6 @@ func BroadcastToAllUsers(update interface{}) {
 }
 
 func handleIncomingMessage(senderID string, msg []byte) {
-
 	var payload MessagePayload
 	if err := json.Unmarshal(msg, &payload); err != nil {
 		log.Println("Invalid message payload:", err)
@@ -185,20 +184,31 @@ func handleIncomingMessage(senderID string, msg []byte) {
 
 	receiverID := payload.To
 	content := payload.Content
+	
+	// DEBUG: Log incoming message
+	fmt.Printf("🔥 DEBUG: Incoming message from %s: '%s' at %s\n", senderID, content, time.Now().Format("15:04:05.000"))
 
 	convoID, err := getOrCreateConversation(senderID, receiverID)
 	if err != nil {
 		log.Println("Error getting/creating conversation:", err)
 		return
 	}
+	
+	// Get current time for consistent storage
+	now := time.Now()
+	messageID := g.GenerateUUID()
+	
 	_, err = g.DB.Exec(`
-		INSERT INTO Messages (id, conversation_id, sender_id, receiver_id, content, seen)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		g.GenerateUUID(), convoID, senderID, receiverID, content, false)
+		INSERT INTO Messages (id, conversation_id, sender_id, receiver_id, content, sent_at, seen)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		messageID, convoID, senderID, receiverID, content, now, false)
 	if err != nil {
 		log.Println("Error inserting message:", err)
 		return
 	}
+	
+	// DEBUG: Log message stored in DB
+	fmt.Printf("🔥 DEBUG: Message stored in DB - ID: %s, Content: '%s', Time: %s\n", messageID, content, now.Format("15:04:05.000"))
 
 	deliverMessageToUser(senderID, receiverID, content, convoID)
 }
@@ -240,6 +250,9 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 		"conversation_id": conversationID,
 		"sent_at":         time.Now().Format("15:04"),
 	}
+
+	// DEBUG: Log message being delivered
+	fmt.Printf("🔥 DEBUG: Delivering message via WebSocket - Content: '%s', Time: %s\n", content, time.Now().Format("15:04:05.000"))
 
 	jsonMsg, err := json.Marshal(messagePayload)
 	if err != nil {
@@ -308,11 +321,14 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// DEBUG: Log query being executed
+	fmt.Printf("🔥 DEBUG: GetMessagesHandler - Query: ORDER BY sent_at DESC, Page: %d, Offset: %d\n", pageNum, offset)
+
 	rows, err := g.DB.Query(`
-		SELECT sender_id, receiver_id, content, sent_at 
+		SELECT id, sender_id, receiver_id, content, sent_at 
 		FROM Messages 
 		WHERE conversation_id = ? 
-		ORDER BY sent_at DESC 
+		ORDER BY sent_at DESC, id DESC 
 		LIMIT ? OFFSET ?`, convoID, limit, offset)
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -321,6 +337,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type Message struct {
+		ID      string `json:"id"`
 		From    string `json:"from"`
 		To      string `json:"to"`
 		Content string `json:"content"`
@@ -331,12 +348,21 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var m Message
 		var sentTime time.Time
-		if err := rows.Scan(&m.From, &m.To, &m.Content, &sentTime); err != nil {
+		if err := rows.Scan(&m.ID, &m.From, &m.To, &m.Content, &sentTime); err != nil {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
 		m.SentAt = sentTime.Format("15:04")
 		messages = append(messages, m)
+		
+		// DEBUG: Log each message retrieved from DB
+		fmt.Printf("🔥 DEBUG: Retrieved from DB - ID: %s, Content: '%s', Time: %s\n", m.ID, m.Content, sentTime.Format("15:04:05.000"))
+	}
+
+	// DEBUG: Log final message order before sending to frontend
+	fmt.Printf("🔥 DEBUG: Final message order being sent to frontend:\n")
+	for i, msg := range messages {
+		fmt.Printf("🔥 DEBUG: [%d] Content: '%s', Time: %s\n", i, msg.Content, msg.SentAt)
 	}
 
 	// Calculate pagination info
@@ -355,7 +381,6 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-
 
 func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)
@@ -376,11 +401,14 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// DEBUG: Log query being executed
+	fmt.Printf("🔥 DEBUG: GetLatestMessagesHandler - Query: ORDER BY sent_at DESC\n")
+
 	rows, err := g.DB.Query(`
-        SELECT sender_id, receiver_id, content, sent_at 
+        SELECT id, sender_id, receiver_id, content, sent_at 
         FROM Messages 
         WHERE conversation_id = ? 
-        ORDER BY sent_at DESC 
+        ORDER BY sent_at DESC, id DESC 
         LIMIT 10`, convoID)
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -388,21 +416,38 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	type Message struct {
+		ID      string `json:"id"`
+		From    string `json:"from"`
+		To      string `json:"to"`
+		Content string `json:"content"`
+		SentAt  string `json:"sent_at"`
+	}
+
 	var messages []Message
 	for rows.Next() {
 		var m Message
 		var sentTime time.Time
-		if err := rows.Scan(&m.From, &m.To, &m.Content, &sentTime); err != nil {
+		if err := rows.Scan(&m.ID, &m.From, &m.To, &m.Content, &sentTime); err != nil {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
 		m.SentAt = sentTime.Format("15:04")
 		messages = append(messages, m)
+		
+		// DEBUG: Log each message retrieved from DB
+		fmt.Printf("🔥 DEBUG: GetLatest - Retrieved from DB - ID: %s, Content: '%s', Time: %s\n", m.ID, m.Content, sentTime.Format("15:04:05.000"))
 	}
 
 	// Reverse to show chronological order (oldest first)
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	// DEBUG: Log final message order after reversal
+	fmt.Printf("🔥 DEBUG: GetLatest - Final message order after reversal:\n")
+	for i, msg := range messages {
+		fmt.Printf("🔥 DEBUG: [%d] Content: '%s', Time: %s\n", i, msg.Content, msg.SentAt)
 	}
 
 	// Check if there are more messages (more efficient than counting all)
