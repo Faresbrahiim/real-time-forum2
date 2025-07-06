@@ -2,9 +2,7 @@ export let ws;
 
 import { chatState, startChatWith } from './chat.js';
 
-// Store unread notifications
 const unreadNotifs = new Set();
-
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         console.log("WebSocket already connected");
@@ -15,7 +13,6 @@ function connectWebSocket() {
     ws.onopen = () => {
         console.log("WebSocket connected");
     };
-
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
@@ -70,7 +67,6 @@ function displayUserStatus(users) {
         notifSpan.id = `notif-${user.id}`;
         notifSpan.textContent = "🔔";
 
-        // Show notification if user has unread message
         notifSpan.style.display = unreadNotifs.has(user.id) ? "inline" : "none";
 
         button.appendChild(notifSpan);

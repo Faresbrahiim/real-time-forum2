@@ -4,9 +4,6 @@ import (
 	"database/sql"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
-
 	"github.com/gorilla/websocket"
 )
 
@@ -54,7 +51,4 @@ var (
 	ActiveConnectionsMutex = sync.RWMutex{}
 )
 
-// ------------------------------------------------
-func GenerateUUID() string {
-	return uuid.New().String()
-}
+

@@ -16,7 +16,6 @@ import (
 )
 
 // Structs
-
 type MessagePayload struct {
 	Type    string `json:"type"`
 	To      string `json:"to"`
@@ -29,14 +28,21 @@ type UserStatus struct {
 	Online   bool   `json:"online"`
 }
 
+type Message struct {
+	ID      int64  `json:"id"`
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Content string `json:"content"`
+	SentAt  string `json:"sent_at"`
+}
+
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
-
 // WebSocket Handler
-
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
@@ -45,7 +51,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"status": %d, "message": "You must be logged in"}`, http.StatusUnauthorized)
 		return
 	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Upgrade error:", err)
@@ -56,39 +61,34 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	g.ActiveConnectionsMutex.Lock()
 	g.ActiveConnections[userID] = &g.SafeConn{Conn: conn}
 	g.ActiveConnectionsMutex.Unlock()
-	BroadcastUserStatus() // Only broadcast when user connects
+	BroadcastUserStatus() 
 
 	defer func() {
 		g.ActiveConnectionsMutex.Lock()
 		delete(g.ActiveConnections, userID)
 		g.ActiveConnectionsMutex.Unlock()
-		BroadcastUserStatus() // Only broadcast when user disconnects
+		BroadcastUserStatus() 
 	}()
-
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("Read error:", err)
 			break
 		}
-
 		var base map[string]interface{}
 		if err := json.Unmarshal(msg, &base); err != nil {
 			log.Println("Invalid JSON from client")
 			continue
 		}
-
 		switch base["type"] {
 		case "message":
 			handleIncomingMessage(userID, msg)
-			// Remove the BroadcastUserStatus() call from here
 		default:
 			fmt.Printf("Received unhandled: %s\n", msg)
 		}
 	}
 }
 
-// New function to update user status for specific users only
 func UpdateUserStatusForUsers(userIDs []string) {
 	g.ActiveConnectionsMutex.RLock()
 	defer g.ActiveConnectionsMutex.RUnlock()
@@ -208,8 +208,6 @@ func BroadcastUserStatus() {
 	}
 }
 
-// Message Handling
-
 func handleIncomingMessage(senderID string, msg []byte) {
 	var payload MessagePayload
 	if err := json.Unmarshal(msg, &payload); err != nil {
@@ -233,16 +231,12 @@ func handleIncomingMessage(senderID string, msg []byte) {
 		log.Println("Error inserting message:", err)
 		return
 	}
-
 	deliverMessageToUser(senderID, receiverID, content, convoID)
-
-	// Update user status only for sender and receiver
 	UpdateUserStatusForUsers([]string{senderID, receiverID})
 }
 
 func getOrCreateConversation(user1, user2 string) (int64, error) {
 	var convoID int64
-
 	err := g.DB.QueryRow(`
 		SELECT id FROM Conversations 
 		WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
@@ -250,22 +244,18 @@ func getOrCreateConversation(user1, user2 string) (int64, error) {
 	if err == nil {
 		return convoID, nil
 	}
-
 	res, err := g.DB.Exec(`
 		INSERT INTO Conversations (user1_id, user2_id) VALUES (?, ?)
 	`, user1, user2)
 	if err != nil {
 		return 0, err
 	}
-
 	convoID, err = res.LastInsertId()
 	if err != nil {
 		return 0, err
 	}
-
 	return convoID, nil
 }
-
 func deliverMessageToUser(senderID, receiverID, content string, conversationID int64) {
 	g.ActiveConnectionsMutex.RLock()
 	receiverConn, receiverOnline := g.ActiveConnections[receiverID]
@@ -278,7 +268,7 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		"content":         content,
 		"receiverId":      receiverID,
 		"conversation_id": conversationID,
-		"sent_at":         time.Now().Format("2006-01-02 15:04:05.000"),
+		"sent_at":         time.Now().Format("15:00"),
 	}
 
 	jsonMsg, err := json.Marshal(messagePayload)
@@ -286,22 +276,17 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		log.Println("Error marshaling message to deliver:", err)
 		return
 	}
-
 	if receiverOnline {
 		receiverConn.WriteMu.Lock()
 		receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
 		receiverConn.WriteMu.Unlock()
 	}
-
 	if senderOnline {
 		senderConn.WriteMu.Lock()
 		senderConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
 		senderConn.WriteMu.Unlock()
 	}
 }
-
-// HTTP Handlers for Messages
-
 func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
@@ -353,14 +338,6 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-
-	type Message struct {
-		ID      int64  `json:"id"`
-		From    string `json:"from"`
-		To      string `json:"to"`
-		Content string `json:"content"`
-		SentAt  string `json:"sent_at"`
-	}
 
 	var messages []Message
 	for rows.Next() {
@@ -421,14 +398,6 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	type Message struct {
-		ID      int64  `json:"id"`
-		From    string `json:"from"`
-		To      string `json:"to"`
-		Content string `json:"content"`
-		SentAt  string `json:"sent_at"`
-	}
-
 	var messages []Message
 	for rows.Next() {
 		var m Message
@@ -444,7 +413,6 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
-
 	var hasMore bool
 	err = g.DB.QueryRow("SELECT COUNT(*) > 10 FROM Messages WHERE conversation_id = ?", convoID).Scan(&hasMore)
 	if err != nil {
@@ -456,7 +424,6 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		"messages": messages,
 		"has_more": hasMore,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }

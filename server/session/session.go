@@ -85,6 +85,7 @@ func DeleteSession(w http.ResponseWriter, r *http.Request) {
 
 // GetSessionUserID checks the session from DB and returns the user ID if valid
 func GetSessionUserID(r *http.Request) (string, error) {
+
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		fmt.Println("Session cookie missing")
@@ -105,7 +106,7 @@ func GetSessionUserID(r *http.Request) (string, error) {
 		fmt.Println("Session expired")
 		return "", fmt.Errorf("session expired")
 	}
-
+	
 	fmt.Println("Session valid for userID:", userID)
 	return userID, nil
 }

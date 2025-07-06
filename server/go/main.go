@@ -25,17 +25,14 @@ func init() {
 	if filePath == "" {
 		filePath = "./server/database/database.sql"
 	}
-
 	query, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	_, err = g.DB.Exec(string(query))
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	log.Println("Database migrated successfully")
 }
 
@@ -62,9 +59,9 @@ func main() {
 	http.HandleFunc("/api/comments/", h.Getcomments)
 
 	// chat handlers
+	http.HandleFunc("/ws", ws.HandleWebSocket)
 	http.HandleFunc("/api/messages", ws.GetMessagesHandler)
 	http.HandleFunc("/api/latest-messages", ws.GetLatestMessagesHandler)
-	http.HandleFunc("/ws", ws.HandleWebSocket)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err := tmpl.Execute(w, nil)
