@@ -171,10 +171,8 @@ function displayMessages(messages, username, prepend = false) {
     msgDiv.appendChild(time);
     
     if (prepend) {
-      // Add to top for older messages
       chatMessages.insertBefore(msgDiv, chatMessages.firstChild);
     } else {
-      // Add to bottom for new messages
       chatMessages.appendChild(msgDiv);
     }
   });

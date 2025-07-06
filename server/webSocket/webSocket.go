@@ -87,7 +87,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Updated function to exclude current user
 func GetOnlineUsers(excludeUserID string) []UserStatus {
 	var users []UserStatus
 
@@ -121,18 +120,16 @@ func GetOnlineUsers(excludeUserID string) []UserStatus {
 	return users
 }
 
-// Updated function to send personalized user status to each user
 func BroadcastUserStatus() {
 	g.ActiveConnectionsMutex.RLock()
 	defer g.ActiveConnectionsMutex.RUnlock()
 
 	for userID, conn := range g.ActiveConnections {
-		// Get users list excluding the current user
 		users := GetOnlineUsers(userID)
 		if users == nil {
 			continue
 		}
-		
+
 		update := map[string]interface{}{
 			"type": "user_status",
 			"data": users,
@@ -184,31 +181,23 @@ func handleIncomingMessage(senderID string, msg []byte) {
 
 	receiverID := payload.To
 	content := payload.Content
-	
-	// DEBUG: Log incoming message
-	fmt.Printf("🔥 DEBUG: Incoming message from %s: '%s' at %s\n", senderID, content, time.Now().Format("15:04:05.000"))
 
 	convoID, err := getOrCreateConversation(senderID, receiverID)
 	if err != nil {
 		log.Println("Error getting/creating conversation:", err)
 		return
 	}
-	
-	// Get current time for consistent storage
-	now := time.Now()
+
 	messageID := g.GenerateUUID()
-	
+
 	_, err = g.DB.Exec(`
-		INSERT INTO Messages (id, conversation_id, sender_id, receiver_id, content, sent_at, seen)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		messageID, convoID, senderID, receiverID, content, now, false)
+		INSERT INTO Messages (id, conversation_id, sender_id, receiver_id, content, seen)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		messageID, convoID, senderID, receiverID, content, false)
 	if err != nil {
 		log.Println("Error inserting message:", err)
 		return
 	}
-	
-	// DEBUG: Log message stored in DB
-	fmt.Printf("🔥 DEBUG: Message stored in DB - ID: %s, Content: '%s', Time: %s\n", messageID, content, now.Format("15:04:05.000"))
 
 	deliverMessageToUser(senderID, receiverID, content, convoID)
 }
@@ -250,9 +239,6 @@ func deliverMessageToUser(senderID, receiverID, content, conversationID string) 
 		"conversation_id": conversationID,
 		"sent_at":         time.Now().Format("15:04"),
 	}
-
-	// DEBUG: Log message being delivered
-	fmt.Printf("🔥 DEBUG: Delivering message via WebSocket - Content: '%s', Time: %s\n", content, time.Now().Format("15:04:05.000"))
 
 	jsonMsg, err := json.Marshal(messagePayload)
 	if err != nil {
@@ -321,14 +307,11 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// DEBUG: Log query being executed
-	fmt.Printf("🔥 DEBUG: GetMessagesHandler - Query: ORDER BY sent_at DESC, Page: %d, Offset: %d\n", pageNum, offset)
-
 	rows, err := g.DB.Query(`
 		SELECT id, sender_id, receiver_id, content, sent_at 
 		FROM Messages 
 		WHERE conversation_id = ? 
-		ORDER BY sent_at DESC, id DESC 
+		ORDER BY sent_at DESC
 		LIMIT ? OFFSET ?`, convoID, limit, offset)
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -354,19 +337,10 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		m.SentAt = sentTime.Format("15:04")
 		messages = append(messages, m)
-		
-		// DEBUG: Log each message retrieved from DB
-		fmt.Printf("🔥 DEBUG: Retrieved from DB - ID: %s, Content: '%s', Time: %s\n", m.ID, m.Content, sentTime.Format("15:04:05.000"))
+
 	}
 
-	// DEBUG: Log final message order before sending to frontend
-	fmt.Printf("🔥 DEBUG: Final message order being sent to frontend:\n")
-	for i, msg := range messages {
-		fmt.Printf("🔥 DEBUG: [%d] Content: '%s', Time: %s\n", i, msg.Content, msg.SentAt)
-	}
-
-	// Calculate pagination info
-	totalPages := (totalMessages + limit - 1) / limit // Ceiling division
+	totalPages := (totalMessages + limit - 1) / limit
 	hasMore := pageNum < totalPages
 
 	response := map[string]interface{}{
@@ -401,14 +375,11 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// DEBUG: Log query being executed
-	fmt.Printf("🔥 DEBUG: GetLatestMessagesHandler - Query: ORDER BY sent_at DESC\n")
-
 	rows, err := g.DB.Query(`
         SELECT id, sender_id, receiver_id, content, sent_at 
         FROM Messages 
         WHERE conversation_id = ? 
-        ORDER BY sent_at DESC, id DESC 
+        ORDER BY sent_at DESC
         LIMIT 10`, convoID)
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -432,22 +403,15 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Format("15:04")
+		// m.SentAt = sentTime.Format("15:04")
+		m.SentAt = sentTime.Format("2006-01-02 15:04:05.000")
 		messages = append(messages, m)
-		
-		// DEBUG: Log each message retrieved from DB
-		fmt.Printf("🔥 DEBUG: GetLatest - Retrieved from DB - ID: %s, Content: '%s', Time: %s\n", m.ID, m.Content, sentTime.Format("15:04:05.000"))
+
 	}
 
 	// Reverse to show chronological order (oldest first)
-	// for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-	// 	messages[i], messages[j] = messages[j], messages[i]
-	// }
-
-	// DEBUG: Log final message order after reversal
-	fmt.Printf("🔥 DEBUG: GetLatest - Final message order after reversal:\n")
-	for i, msg := range messages {
-		fmt.Printf("🔥 DEBUG: [%d] Content: '%s', Time: %s\n", i, msg.Content, msg.SentAt)
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
 	}
 
 	// Check if there are more messages (more efficient than counting all)
