@@ -44,7 +44,7 @@ window.sendMessage = function () {
     ws.send(JSON.stringify({
         type: "message",
         to: chatState.currentChatUserId,
-        content: messageText
+        content: messageText,
     }));
 
     input.value = "";
@@ -144,6 +144,7 @@ function clearNotif(userId) {
 }
 
 function showNotif(userId) {
+    
     const notifSpan = document.getElementById(`notif-${userId}`);
     if (notifSpan) {
         notifSpan.style.display = "inline";

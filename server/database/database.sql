@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     lastName TEXT NOT NULL,
     password_hash TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS Session (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -33,9 +34,8 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 
 
--- conversation 
 CREATE TABLE IF NOT EXISTS Conversations (
-    id TEXT UNIQUE PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user1_id TEXT NOT NULL,
     user2_id TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -43,10 +43,9 @@ CREATE TABLE IF NOT EXISTS Conversations (
     FOREIGN KEY (user2_id) REFERENCES Users(id)
 );
 
--- 9. Messages ✉️​
 CREATE TABLE IF NOT EXISTS Messages (
-    id TEXT UNIQUE PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL,
     sender_id TEXT NOT NULL,
     receiver_id TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -56,10 +55,4 @@ CREATE TABLE IF NOT EXISTS Messages (
     FOREIGN KEY (sender_id) REFERENCES Users(id)
 );
 
-
---
--- | id     | conversation\_id | sender\_id | content  |
--- | ------ | ---------------- | ---------- | -------- |
--- | msg001 | conv123          | userA      | "Hi!"    |
--- | msg002 | conv123          | userB      | "Hello!" |
 
