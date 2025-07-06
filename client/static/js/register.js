@@ -155,6 +155,7 @@ document.getElementById("logout").addEventListener("click", function(e) {
             document.getElementById("feedPost").style.display = "none";
             document.getElementById('logsuccessMessage').style.display = 'none';
             document.getElementById('fullSinglePost').style.display = 'none';
+            document.getElementById('chatBox').style.display='none';
             ws.close()
             
         } else {

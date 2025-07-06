@@ -2,6 +2,9 @@ export let ws;
 
 import { chatState, startChatWith } from './chat.js';
 
+// Store unread notifications
+const unreadNotifs = new Set();
+
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         console.log("WebSocket already connected");
@@ -58,26 +61,33 @@ function displayUserStatus(users) {
     users.forEach(user => {
         const userDiv = document.createElement("div");
         userDiv.className = `user ${user.online ? "online" : "offline"}`;
+
         const button = document.createElement("button");
         button.className = "username-button";
         button.innerHTML = `${user.online ? "🟢" : "⚪"} ${user.username}`;
+
         const notifSpan = document.createElement("span");
         notifSpan.id = `notif-${user.id}`;
         notifSpan.textContent = "🔔";
-        notifSpan.style.display = "none";
+
+        // Show notification if user has unread message
+        notifSpan.style.display = unreadNotifs.has(user.id) ? "inline" : "none";
+
         button.appendChild(notifSpan);
         button.onclick = () => {
             startChatWith(user.id, user.username);
             clearNotif(user.id);
         };
+
         userDiv.appendChild(button);
         container.appendChild(userDiv);
     });
 }
-let c =0
+
 function handleIncomingMessage(msg) {
+    const chatMessages = document.getElementById("chatMessages");
+
     if (msg.from === chatState.currentChatUserId) {
-        const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
         msgDiv.className = "message received";
         msgDiv.textContent = msg.content;
@@ -91,7 +101,6 @@ function handleIncomingMessage(msg) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     else if (msg.receiverId === chatState.currentChatUserId) {
-        const chatMessages = document.getElementById("chatMessages");
         const msgDiv = document.createElement("div");
         msgDiv.className = "message sent";
         msgDiv.textContent = `You: ${msg.content}`;
@@ -105,9 +114,7 @@ function handleIncomingMessage(msg) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     else {
-        console.log("msg from",msg.from)
         showNotif(msg.from);
-        console.log("1",c++)
         console.log("New message from another user:", msg.from);
     }
 }
@@ -135,9 +142,8 @@ window.addEventListener('load', async () => {
     }
 });
 
-
 function clearNotif(userId) {
-    console.log(userId);
+    unreadNotifs.delete(userId);
     const notifSpan = document.getElementById(`notif-${userId}`);
     if (notifSpan) {
         notifSpan.style.display = "none";
@@ -145,7 +151,7 @@ function clearNotif(userId) {
 }
 
 function showNotif(userId) {
-    
+    unreadNotifs.add(userId);
     const notifSpan = document.getElementById(`notif-${userId}`);
     if (notifSpan) {
         notifSpan.style.display = "inline";
