@@ -55,4 +55,5 @@ CREATE TABLE IF NOT EXISTS Messages (
     FOREIGN KEY (sender_id) REFERENCES Users(id)
 );
 
-
+-- drop table Messages;
+-- drop table Conversations;

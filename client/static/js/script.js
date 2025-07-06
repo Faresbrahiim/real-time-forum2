@@ -105,6 +105,7 @@ function handleIncomingMessage(msg) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     else {
+        console.log("msg from",msg.from)
         showNotif(msg.from);
         console.log("1",c++)
         console.log("New message from another user:", msg.from);
