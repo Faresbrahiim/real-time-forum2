@@ -25,11 +25,11 @@
     gap: 2rem;
 }
 
-.posts:hover {
+/* .posts:hover {
     scale: 1.09;
     transition: scale 0.2s ease-in-out;
     cursor: pointer;
-}
+} */
 
 
 .postTitle {

@@ -36,12 +36,12 @@ type Message struct {
 	SentAt  string `json:"sent_at"`
 }
 
-
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
+
 // WebSocket Handler
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)
@@ -61,13 +61,13 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	g.ActiveConnectionsMutex.Lock()
 	g.ActiveConnections[userID] = &g.SafeConn{Conn: conn}
 	g.ActiveConnectionsMutex.Unlock()
-	BroadcastUserStatus() 
+	BroadcastUserStatus()
 
 	defer func() {
 		g.ActiveConnectionsMutex.Lock()
 		delete(g.ActiveConnections, userID)
 		g.ActiveConnectionsMutex.Unlock()
-		BroadcastUserStatus() 
+		BroadcastUserStatus()
 	}()
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -256,6 +256,7 @@ func getOrCreateConversation(user1, user2 string) (int64, error) {
 	}
 	return convoID, nil
 }
+
 func deliverMessageToUser(senderID, receiverID, content string, conversationID int64) {
 	g.ActiveConnectionsMutex.RLock()
 	receiverConn, receiverOnline := g.ActiveConnections[receiverID]
@@ -287,6 +288,7 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		senderConn.WriteMu.Unlock()
 	}
 }
+
 func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
@@ -347,7 +349,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Format("2006-01-02 15:04:05.000")
+		m.SentAt = sentTime.Format("15:04")
 		messages = append(messages, m)
 	}
 
@@ -406,7 +408,7 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Format("2006-01-02 15:04:05.000")
+		m.SentAt = sentTime.Format("15:04")
 		messages = append(messages, m)
 	}
 
