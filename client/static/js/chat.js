@@ -29,7 +29,7 @@ export async function startChatWith(userId, username) {
   const chatMessages = document.getElementById("chatMessages");
   const input = document.getElementById("chatInput");
   input.value = "";
-  chatMessages.innerHTML = "";
+  chatMessages.textContent = "";
  
   chatState.currentChatUserId = userId;
   chatState.currentPage = 1;
