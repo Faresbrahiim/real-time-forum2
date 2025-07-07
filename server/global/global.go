@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"sync"
 	"time"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -40,15 +41,20 @@ type Comment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// ===
+// safeConn ,,, store the current connect  + the mutex to avoid two go routines makes action at same time
+// Every individual connection needs its own lock.
+// protect the map itself used for adding removing listing ,,,,.. action happend affect connection
 type SafeConn struct {
 	Conn    *websocket.Conn
 	WriteMu sync.Mutex
 }
 
+// active connection map that have in key the user id ,,,  and in valur a pointer to safeConeection struct ... the conn + mutex
+// protect the websockt connection from conncurent writes
+// Even if the map is safe, the WebSocket itself (Conn) is not safe for concurrent writes.
+// so it protect the map....
+// accept lock unlock rlock runlock  ,,, rlock just read not write ...
 var (
 	ActiveConnections      = make(map[string]*SafeConn)
 	ActiveConnectionsMutex = sync.RWMutex{}
 )
-
-
