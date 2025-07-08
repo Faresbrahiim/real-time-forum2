@@ -15,21 +15,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// msg playlod is used to send a msg to the client such as  in content mssgs ... typing user_status etc....
 type MessagePayload struct {
 	Type    string `json:"type"`
 	To      string `json:"to"`
 	Content string `json:"content"`
 }
 
-// userStatus struct user to store the status of the user such as id username and online offline
 type UserStatus struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	Online   bool   `json:"online"`
 }
 
-// msgs is used to send  msg to  clinet with it content .. sender receiver  ,,, sending time and the id ,,,
 type Message struct {
 	ID      int64  `json:"id"`
 	From    string `json:"from"`
@@ -38,9 +35,6 @@ type Message struct {
 	SentAt  string `json:"sent_at"`
 }
 
-// upgrade struch used to upgrade the http request to websocket connection  ,, check orgigin only upgrage when the request comes from the last origin to avoid attack ..
-// why http://localhost:8080  exactly ? because the backend server serve both the static files such as js html...(front) and the back also
-// when we used react or something else the server origin is http://localhost:3030
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
@@ -48,19 +42,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// WebSocket Handler wait for a request from the front when user get logged  .. route  => /ws
-// check if the session exist on db if no return json as response .... if not continue ans upgrade the connection
-// defer conn.close()  execute when the  function finish ,,,, it clone the connection
-// seconde defer used to delte the connection from the  active connection ,, given it the id
-// which defer it will execute first ... the secone one why ? because the defer func pusheed into stack which use the lifo mecanisme
-// after upgrading to webSocket connection means that ,, the user  or the current connection is online  we marked it by adding the user if and the connection in the map
-//
-//	why mutex ? to avoid cunccurency and race condition since the map is shared beteween many connections or users that means ,,, we have to lock and unclock after any action
-//
-// defer ... exxetuce in cases  of error returning or something...,,, like refresh page close connection in general
-// the for loop is lesnting to msgs from front
-// reads the msg from the connection _ msg type ... msg ... byte slice
-// declare a map to holde parsed json
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	userID, err := session.GetSessionUserID(r)
 	if err != nil {
@@ -87,6 +68,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		g.ActiveConnectionsMutex.Unlock()
 		BroadcastUserStatus()
 	}()
+
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -107,9 +89,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// after a msg is sent ... means the last msg time is change the order of msg changes means the order of users change... means..., update it for the two users
-// for the receiver the the sender ..., do the same query again but only for the two users...
-// the connection will be for both the sender and the receiver because handleIncomming msg handled them both
 func UpdateUserStatusForUsers(userIDs []string) {
 	g.ActiveConnectionsMutex.RLock()
 	defer g.ActiveConnectionsMutex.RUnlock()
@@ -198,17 +177,6 @@ func GetOnlineUsers(excludeUserID string) []UserStatus {
 	return users
 }
 
-// brodcast  the status to all active connection ....
-// RLock because we will just read no write
-// for each userid we get the online users ... except the current one to not show it in ui
-// if  none on users is online just continue
-// update is a map that accpet string in key and interface in value can be any type....
-// type is user_statue so the front  know how to handle it
-// the data is users.... online with true offline with false
-// json marshal ... make the map => to json format since  josn is convenient choice.
-// since we're writing... we need to make the connection safe means we will use mutex
-// why we did not call g global because conn is like an instance of the  safeconncetion as we said before
-// textMessage --> send a msg as plein text not binary or somthing...
 func BroadcastUserStatus() {
 	g.ActiveConnectionsMutex.RLock()
 	defer g.ActiveConnectionsMutex.RUnlock()
@@ -240,10 +208,6 @@ func BroadcastUserStatus() {
 	}
 }
 
-// in case of type is  message ,,, with the msg and  the sender ...
-// the args is slice of byte ... we did not parsed it because the the map is  unordred and msg should be ordred
-// get or create convertation ... used  return the id of the convertation
-// for each user msg need to update the userstatue order......
 func handleIncomingMessage(senderID string, msg []byte) {
 	var payload MessagePayload
 
@@ -268,13 +232,11 @@ func handleIncomingMessage(senderID string, msg []byte) {
 		log.Println("Error inserting message:", err)
 		return
 	}
+
 	deliverMessageToUser(senderID, receiverID, content, convoID)
 	UpdateUserStatusForUsers([]string{senderID, receiverID})
 }
 
-// create a convertaion if not exist bewtweween two users ,, if exist it return its id
-// int64 because it's long
-// last insetreted id is func to bring the last id ...used with autoINcreamnt usually
 func getOrCreateConversation(user1, user2 string) (int64, error) {
 	var convoID int64
 	err := g.DB.QueryRow(`
@@ -284,12 +246,14 @@ func getOrCreateConversation(user1, user2 string) (int64, error) {
 	if err == nil {
 		return convoID, nil
 	}
+
 	res, err := g.DB.Exec(`
 		INSERT INTO Conversations (user1_id, user2_id) VALUES (?, ?)
 	`, user1, user2)
 	if err != nil {
 		return 0, err
 	}
+
 	convoID, err = res.LastInsertId()
 	if err != nil {
 		return 0, err
@@ -297,9 +261,6 @@ func getOrCreateConversation(user1, user2 string) (int64, error) {
 	return convoID, nil
 }
 
-// when convertation is already opened ....  no scroll .... send receive ... real_time_exchange
-// bring the connection of the two users the sender and the receiver ....
-// if both are online.... send if one online send (sender)
 func deliverMessageToUser(senderID, receiverID, content string, conversationID int64) {
 	g.ActiveConnectionsMutex.RLock()
 	receiverConn, receiverOnline := g.ActiveConnections[receiverID]
@@ -320,11 +281,13 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		log.Println("Error marshaling message to deliver:", err)
 		return
 	}
+
 	if receiverOnline {
 		receiverConn.WriteMu.Lock()
 		receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
 		receiverConn.WriteMu.Unlock()
 	}
+
 	if senderOnline {
 		senderConn.WriteMu.Lock()
 		senderConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
@@ -458,6 +421,7 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
+
 	var hasMore bool
 	err = g.DB.QueryRow("SELECT COUNT(*) > 10 FROM Messages WHERE conversation_id = ?", convoID).Scan(&hasMore)
 	if err != nil {
@@ -469,6 +433,7 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		"messages": messages,
 		"has_more": hasMore,
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
