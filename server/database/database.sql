@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS Session (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    username TEXT NOT NULL,
     expires_at DATETIME NOT NULL
 );
 

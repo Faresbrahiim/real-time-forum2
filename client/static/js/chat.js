@@ -42,7 +42,7 @@ export async function startChatWith(userId, username) {
     if (response.ok) {
       const data = await response.json();
       chatState.hasMore = data.has_more;
-      chatState.totalMessages = data.total_messages || data.messages.length;
+      chatState.totalMessages = data.total_messages || (data.messages ? data.messages.length : 0);
       
       displayMessages(data.messages, username, false); 
     
@@ -137,6 +137,10 @@ async function loadMoreMessages(userId, username) {
 function displayMessages(messages, username, prepend = false) {
   const chatMessages = document.getElementById("chatMessages");
   const currentUserId = chatState.currentChatUserId;
+
+  if (!Array.isArray(messages)) {
+    return;
+  }
   
   messages.forEach(msg => {
     const msgDiv = document.createElement("div");

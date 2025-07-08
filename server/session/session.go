@@ -21,15 +21,16 @@ func CreateSession(userID string) string {
 }
 
 // SetSession creates and sets the session cookie, stores in memory, and returns ID + expiration for DB
-func SetSession(w http.ResponseWriter, userID string) (string, time.Time) {
+func SetSession(w http.ResponseWriter, userID string, username string) (error) {
 	sessionId := CreateSession(userID)
 	expiration := time.Now().Add(24 * time.Hour)
 
 	// Store in memory
-	g.SessionsMu.Lock()
-	g.Sessions[sessionId] = userID
-	g.SessionsMu.Unlock()
-
+	_, err := g.DB.Exec("INSERT INTO Session (id, user_id, username, expires_at) VALUES (?, ?, ?, ?)", sessionId, userID, username, expiration)
+	if err != nil {
+		log.Println("Failed to store session in DB:", err)
+		// Still proceed so the client gets a response
+	}
 	// Set cookie
 	cookie := &http.Cookie{
 		Name:     "session_id",
@@ -39,8 +40,7 @@ func SetSession(w http.ResponseWriter, userID string) (string, time.Time) {
 		Expires:  expiration,
 	}
 	http.SetCookie(w, cookie)
-
-	return sessionId, expiration
+	return err
 }
 
 
@@ -50,12 +50,22 @@ func GetSessionUsername(r *http.Request) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-
-	g.SessionsMu.Lock()
-	userID, exists := g.Sessions[cookie.Value]
-	g.SessionsMu.Unlock()
-
-	return userID, exists
+	var username string
+	var expiresAt time.Time
+	exists := false
+	err = g.DB.QueryRow("SELECT username, expires_at FROM Session WHERE id = ?", cookie.Value).
+		Scan(&username, &expiresAt)
+	if err != nil {
+		return "", false
+	}
+	if time.Now().After(expiresAt) {
+		g.DB.Exec("DELETE FROM Session WHERE id = ?", cookie.Value)
+		return "", false
+	}
+	if (username != "") {
+		exists = true
+	}
+	return username, exists
 }
 
 // DeleteSession removes the session from memory and clears the cookie
@@ -68,9 +78,10 @@ func DeleteSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove from memory
-	g.SessionsMu.Lock()
-	delete(g.Sessions, cookie.Value)
-	g.SessionsMu.Unlock()
+	_, err = g.DB.Exec("DELETE FROM Session WHERE id = ?", cookie.Value)
+	if err != nil {
+		log.Println("Failed to delete session from DB:", err)
+	}
 
 	// Invalidate cookie
 	http.SetCookie(w, &http.Cookie{

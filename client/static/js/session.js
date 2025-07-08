@@ -5,9 +5,7 @@ import { fetchPosts } from './posts.js';
 document.addEventListener('DOMContentLoaded', checkSession);
 
 window.addEventListener('storage', (event) => {
-    // Make sure the key is `session_logged_out`
     if (event.key === 'session_logged_out') {
-        // Handle session logout in this tab
         checkSession();
     }
 });
@@ -25,7 +23,6 @@ async function checkSession() {
             document.getElementById("logout").style.display = "block";
             document.getElementById("createicon").style.display = "block";
             document.getElementById("home").style.display = "block";
-            console.log("User is logged in:", result.username);
             fetchPosts();
         } else {
             document.getElementById("logInSection").style.display = "block";

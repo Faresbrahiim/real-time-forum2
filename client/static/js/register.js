@@ -3,6 +3,12 @@ console.log("Register script loaded");
 import {ws} from "./script.js"
 import { fetchPosts } from './posts.js';
 
+document.getElementById("homesign").addEventListener("click", function(e) {
+    document.getElementById('signUpSection').style.display = "none";
+    document.getElementById('logInSection').style.display = "block";
+    document.getElementById("homesign").style.display = "none";
+})
+
 document.getElementById("signUpLink").addEventListener("click", function(e) {
     const form = document.getElementById('myLogInForm');
     const errorDiv = document.getElementById('errorMessage');
@@ -12,6 +18,7 @@ document.getElementById("signUpLink").addEventListener("click", function(e) {
     e.preventDefault();
     document.getElementById("logInSection").style.display = "none";
     document.getElementById("signUpSection").style.display = "block";
+    document.getElementById("homesign").style.display = "block";
     console.log("Switched to Sign Up section");
     
 })
@@ -29,8 +36,7 @@ async function handleSignUp(event) {
     event.preventDefault();
     const form = document.getElementById('mySignUpForm');
     const errorDiv = document.getElementById('errorMessage');
-    const successDiv = document.getElementById('successMessage');
-    
+    const successDiv = document.getElementById('successMessage');    
     // Hide previous messages
     errorDiv.style.display = 'none';
     successDiv.style.display = 'none';

@@ -23,6 +23,7 @@
                 <h1 class="logo">Forum</h1>
                 <ul class="categories">
                     <li class="needLog" id="home">home</li>
+                    <li id="homesign">home</li>
                     <li class="needLog" id="logout">log out</li>
                     <li class="needLog" id="createicon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
                         <path d="M12 2C11.4477 2 11 2.4477 11 3V11H3C2.4477 11 2 11.4477 2 12C2 12.5523 2.4477 13 3 13H11V21C11 21.5523 11.4477 22 12 22C12.5523 22 13 21.5523 13 21V13H21C21.5523 13 22 12.5523 22 12C22 11.4477 21.5523 11 21 11H13V3C13 2.4477 12.5523 2 12 2Z" fill="currentColor"/>
@@ -104,16 +105,15 @@
             <label for="myPostTitle">Title</label>
             <input type="text" placeholder="Enter your Title here..." name="title" id="myPostTitle" required>
             <br><br>
-            <label for="myPostCategory">categories</label>
-            <select name="myPostCategory" id="myPostCategory" name="categories" required>
-                <option value="">-- Select a category --</option>
-                <option value="technology">Technology</option>
-                <option value="fashion">Fashion</option>
-                <option value="health">Health</option>
-                <option value="travel">Travel</option>
-                <option value="education">Education</option>
-                <option value="sports">Sports</option>
-            </select>
+            <fieldset id="myPostCategory">
+                <legend>Select Categories:</legend> 
+                <label><input type="checkbox" name="categories" value="technology"> Technology</label><br>
+                <label><input type="checkbox" name="categories" value="fashion"> Fashion</label><br>
+                <label><input type="checkbox" name="categories" value="health"> Health</label><br>
+                <label><input type="checkbox" name="categories" value="travel"> Travel</label><br>
+                <label><input type="checkbox" name="categories" value="education"> Education</label><br>
+                <label><input type="checkbox" name="categories" value="sports"> Sports</label><br>
+                </fieldset>
             <br><br>
             <label for="myPostContent">Content</label>
             <textarea name="content" placeholder="Enter your content here..." id="myPostContent" required></textarea> 

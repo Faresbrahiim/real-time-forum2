@@ -5,7 +5,7 @@
     --color4: #D8D4D5;
 }
 
-.signUp {
+.signUp, #homesign {
     display: none;
 }
 

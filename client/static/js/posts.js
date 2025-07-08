@@ -22,8 +22,12 @@ async function handlePostCreation(event) {
     errorDiv.style.display = 'none';
     successDiv.style.display = 'none';
 
-    // Convert form data to URL-encoded string instead of FormData
     const formData = new FormData(form);
+        const selectedCategories = Array.from(document.querySelectorAll('input[name="categories"]:checked'))
+                                    .map(input => input.value);
+
+    selectedCategories.forEach(cat => formData.append('categories[]', cat));
+
     const urlEncodedData = new URLSearchParams(formData).toString();
     
     try {
@@ -44,7 +48,6 @@ async function handlePostCreation(event) {
                 document.getElementById("createPost").style.display = "none";
                 fetchPosts();
                 postsDiv.style.display = "grid";
-                
                 form.reset();
             }, 2000);
             
@@ -81,7 +84,9 @@ export async function fetchPosts() {
         feedPost.innerHTML = '';
         // display freinds section
         document.getElementById("freinds").style.display="flex";
-
+        if (!Array.isArray(posts)) {
+            return;
+        }
         posts.forEach(post => {
             const postDiv = document.createElement('div');
             postDiv.className = 'posts';
@@ -118,11 +123,25 @@ async function singlePost() {
 
         const single = document.getElementById('singlePost');
         single.style.display = 'grid';
-        single.innerHTML = `
-            <h2 class="postTitle">${postData.title}</h2>
-            <p class="postCategory">Category: ${postData.category}</p>
-            <p class="postContent">${postData.content}</p>
-        `;
+        single.innerHTML = '';
+
+        // Create elements with safe text insertion
+        const titleEl = document.createElement('h2');
+        titleEl.className = 'postTitle';
+        titleEl.textContent = postData.title;
+
+        const categoryEl = document.createElement('p');
+        categoryEl.className = 'postCategory';
+        categoryEl.textContent = 'Category: ' + postData.category;
+
+        const contentEl = document.createElement('p');
+        contentEl.className = 'postContent';
+        contentEl.textContent = postData.content;
+
+        single.appendChild(titleEl);
+        single.appendChild(categoryEl);
+        single.appendChild(contentEl);
+
         Array.from(document.getElementsByClassName('postContent')).forEach(el => {
         el.style.display = 'block'});
         document.getElementById('commentForm').style.display = 'flex';
@@ -130,34 +149,6 @@ async function singlePost() {
         document.getElementById('fullSinglePost').style.display = 'flex';
     } catch (error) {
         console.error('Error displaying single post:', error);
-    }
-}
-
-async function comments() {
-    try {
-        const response = await fetch(`/api/comments/${postid}`);
-        if (!response.ok) throw new Error('Failed to fetch comments');
-        const commentsData = await response.json();
-
-        const commentsDiv = document.getElementById('comment');
-        commentsDiv.style.display = 'block';
-        commentsDiv.innerHTML = '';
-        if (Array.isArray(commentsData)) {
-            commentsData.forEach(comment => {
-                const commentDiv = document.createElement('div');
-                commentDiv.className = 'comment';
-                commentDiv.innerHTML = `
-                    <p class="commentContent">${comment.content}</p>
-                    <p class="commentAuthor">By: ${comment.author}</p>
-                `;
-                commentsDiv.appendChild(commentDiv);
-            });
-        } else {
-            console.log('No comments found for this post.');
-            document.getElementById('comment').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error loading comments:', error);
     }
 }
 
@@ -205,5 +196,44 @@ async function handleCommentCreation(event) {
         console.error('Error:', error);
         submitBtn.disabled = false;
         submitBtn.value = "Submit";
+    }
+}
+
+async function comments() {
+    try {
+        const response = await fetch(`/api/comments/${postid}`);
+        if (!response.ok) throw new Error('Failed to fetch comments');
+        const commentsData = await response.json();
+
+        const commentsDiv = document.getElementById('comment');
+        commentsDiv.style.display = 'block';
+        
+        // Clear previous comments safely
+        commentsDiv.innerHTML = '';
+
+        if (Array.isArray(commentsData) && commentsData.length > 0) {
+            commentsData.forEach(comment => {
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'comment';
+
+                const contentP = document.createElement('p');
+                contentP.className = 'commentContent';
+                contentP.textContent = comment.content;
+
+                const authorP = document.createElement('p');
+                authorP.className = 'commentAuthor';
+                authorP.textContent = 'By: ' + comment.author;
+
+                commentDiv.appendChild(contentP);
+                commentDiv.appendChild(authorP);
+
+                commentsDiv.appendChild(commentDiv);
+            });
+        } else {
+            console.log('No comments found for this post.');
+            commentsDiv.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading comments:', error);
     }
 }

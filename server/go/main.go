@@ -48,7 +48,7 @@ func main() {
 	// autentification handlers
 	http.HandleFunc("/api/login", h.Getlogin)
 	http.HandleFunc("/api/signup", h.Getregister)
-	http.HandleFunc("/api/logout", h.Get)
+	http.HandleFunc("/api/logout", h.Getlogout)
 
 	// posts handlers
 	http.HandleFunc("/api/checksession", h.CheckSession)

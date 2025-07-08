@@ -10,11 +10,6 @@ import (
 
 var DB *sql.DB
 
-var (
-	Sessions   = map[string]string{}
-	SessionsMu sync.Mutex
-)
-
 type User struct {
 	ID        string
 	Username  string

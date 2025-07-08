@@ -40,8 +40,18 @@ func Getcreatepost(w http.ResponseWriter, r *http.Request) {
 	
 	post.ID = uuid.New().String()
 	post.Title = r.FormValue("title")
-	post.Category = r.FormValue("myPostCategory")
 	post.Content = r.FormValue("content")
+    categories := r.Form["categories[]"]
+	if len(categories) == 0 {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Please select at least one category",
+		})
+		return
+	}
+	// Join categories into a comma-separated string
+	post.Category = strings.Join(categories, ", ")
+
 	
 	if err := insertPost(g.DB, post); err != nil {
 		log.Println("Error inserting post:", err)

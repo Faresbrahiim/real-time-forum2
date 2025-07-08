@@ -120,10 +120,6 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	log.Println("Login attempt for user:", username)
-	log.Println("Password provided:", password)
-
 	var hashedPassword string
 	err := g.DB.QueryRow("SELECT password_hash FROM users WHERE username = ?", username).Scan(&hashedPassword)
 	if err != nil {
@@ -167,8 +163,7 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set session and store in DB
-	sessionId, expiration := session.SetSession(w, userID)
-	_, err = g.DB.Exec("INSERT INTO Session (id, user_id, expires_at) VALUES (?, ?, ?)", sessionId, userID, expiration)
+	err = session.SetSession(w, userID, username)
 	if err != nil {
 		log.Println("Failed to store session in DB:", err)
 		// Still proceed so the client gets a response
@@ -181,22 +176,25 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func CheckSession(w http.ResponseWriter, r *http.Request) {
-	username, ok := session.GetSessionUsername(r)
 	w.Header().Set("Content-Type", "application/json")
 
-	if ok {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"loggedIn": true,
-			"username": username,
-		})
-	} else {
+	username, ok := session.GetSessionUsername(r)
+	if !ok {
+		log.Println("Session not found or expired")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"loggedIn": false,
 		})
+		return
 	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"loggedIn": true,
+		"username": username,
+	})
 }
 
-func Get(w http.ResponseWriter, r *http.Request) {
+
+func Getlogout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	session.DeleteSession(w, r)
 
