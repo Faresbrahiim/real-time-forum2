@@ -428,7 +428,6 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
-		// fmt.Println("time is ", m.SentAt)
 		messages = append(messages, m)
 	}
 
