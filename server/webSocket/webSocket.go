@@ -430,11 +430,9 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
 		messages = append(messages, m)
 	}
-
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
-
 	var hasMore bool
 	err = g.DB.QueryRow("SELECT COUNT(*) > 10 FROM Messages WHERE conversation_id = ?", convoID).Scan(&hasMore)
 	if err != nil {
@@ -446,7 +444,6 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		"messages": messages,
 		"has_more": hasMore,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
