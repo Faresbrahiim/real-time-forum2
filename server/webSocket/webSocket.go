@@ -368,8 +368,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Format("15:04")
-		fmt.Println(m.SentAt, "time is ")
+		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
 		messages = append(messages, m)
 	}
 
@@ -428,7 +427,7 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Format("15:04")
+		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
 		// fmt.Println("time is ", m.SentAt)
 		messages = append(messages, m)
 	}
