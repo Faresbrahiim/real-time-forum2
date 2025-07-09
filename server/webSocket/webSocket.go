@@ -50,6 +50,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"status": %d, "message": "You must be logged in"}`, http.StatusUnauthorized)
 		return
 	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Upgrade error:", err)
@@ -57,14 +58,28 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	safeConn := &g.SafeConn{Conn: conn}
+
 	g.ActiveConnectionsMutex.Lock()
-	g.ActiveConnections[userID] = &g.SafeConn{Conn: conn}
+	g.ActiveConnections[userID] = append(g.ActiveConnections[userID], safeConn)
 	g.ActiveConnectionsMutex.Unlock()
+
 	BroadcastUserStatus()
 
 	defer func() {
 		g.ActiveConnectionsMutex.Lock()
-		delete(g.ActiveConnections, userID)
+		conns := g.ActiveConnections[userID]
+		for i, c := range conns {
+			if c == safeConn {
+				// Remove this connection
+				g.ActiveConnections[userID] = append(conns[:i], conns[i+1:]...)
+				break
+			}
+		}
+		// Clean up if no connections left
+		if len(g.ActiveConnections[userID]) == 0 {
+			delete(g.ActiveConnections, userID)
+		}
 		g.ActiveConnectionsMutex.Unlock()
 		BroadcastUserStatus()
 	}()
@@ -89,12 +104,41 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func BroadcastUserStatus() {
+	g.ActiveConnectionsMutex.RLock()
+	defer g.ActiveConnectionsMutex.RUnlock()
+
+	for userID, conns := range g.ActiveConnections {
+		users := GetOnlineUsers(userID)
+		if users == nil {
+			continue
+		}
+
+		update := map[string]interface{}{
+			"type": "user_status",
+			"data": users,
+		}
+
+		jsonUpdate, err := json.Marshal(update)
+		if err != nil {
+			log.Println("Error marshaling update:", err)
+			continue
+		}
+
+		for _, conn := range conns {
+			conn.WriteMu.Lock()
+			conn.Conn.WriteMessage(websocket.TextMessage, jsonUpdate)
+			conn.WriteMu.Unlock()
+		}
+	}
+}
+
 func UpdateUserStatusForUsers(userIDs []string) {
 	g.ActiveConnectionsMutex.RLock()
 	defer g.ActiveConnectionsMutex.RUnlock()
 
 	for _, targetUserID := range userIDs {
-		conn, exists := g.ActiveConnections[targetUserID]
+		conns, exists := g.ActiveConnections[targetUserID]
 		if !exists {
 			continue
 		}
@@ -115,12 +159,10 @@ func UpdateUserStatusForUsers(userIDs []string) {
 			continue
 		}
 
-		conn.WriteMu.Lock()
-		err = conn.Conn.WriteMessage(websocket.TextMessage, jsonUpdate)
-		conn.WriteMu.Unlock()
-
-		if err != nil {
-			log.Println("Error writing to user", targetUserID, ":", err)
+		for _, conn := range conns {
+			conn.WriteMu.Lock()
+			conn.Conn.WriteMessage(websocket.TextMessage, jsonUpdate)
+			conn.WriteMu.Unlock()
 		}
 	}
 }
@@ -175,37 +217,6 @@ func GetOnlineUsers(excludeUserID string) []UserStatus {
 	}
 
 	return users
-}
-
-func BroadcastUserStatus() {
-	g.ActiveConnectionsMutex.RLock()
-	defer g.ActiveConnectionsMutex.RUnlock()
-
-	for userID, conn := range g.ActiveConnections {
-		users := GetOnlineUsers(userID)
-		if users == nil {
-			continue
-		}
-
-		update := map[string]interface{}{
-			"type": "user_status",
-			"data": users,
-		}
-
-		jsonUpdate, err := json.Marshal(update)
-		if err != nil {
-			log.Println("Error marshaling update:", err)
-			continue
-		}
-
-		conn.WriteMu.Lock()
-		err = conn.Conn.WriteMessage(websocket.TextMessage, jsonUpdate)
-		conn.WriteMu.Unlock()
-
-		if err != nil {
-			log.Println("Error writing to user", userID, ":", err)
-		}
-	}
 }
 
 func handleIncomingMessage(senderID string, msg []byte) {
@@ -263,8 +274,8 @@ func getOrCreateConversation(user1, user2 string) (int64, error) {
 
 func deliverMessageToUser(senderID, receiverID, content string, conversationID int64) {
 	g.ActiveConnectionsMutex.RLock()
-	receiverConn, receiverOnline := g.ActiveConnections[receiverID]
-	senderConn, senderOnline := g.ActiveConnections[senderID]
+	receiverConns := g.ActiveConnections[receiverID]
+	senderConns := g.ActiveConnections[senderID]
 	g.ActiveConnectionsMutex.RUnlock()
 
 	messagePayload := map[string]interface{}{
@@ -273,25 +284,27 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		"content":         content,
 		"receiverId":      receiverID,
 		"conversation_id": conversationID,
-		"sent_at":         time.Now().Format("15:00"),
+		"sent_at":         time.Now().Format("15:04"),
 	}
 
 	jsonMsg, err := json.Marshal(messagePayload)
 	if err != nil {
-		log.Println("Error marshaling message to deliver:", err)
+		log.Println("Error marshaling message:", err)
 		return
 	}
 
-	if receiverOnline {
-		receiverConn.WriteMu.Lock()
-		receiverConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
-		receiverConn.WriteMu.Unlock()
+	// Send to all sender connections
+	for _, conn := range senderConns {
+		conn.WriteMu.Lock()
+		conn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+		conn.WriteMu.Unlock()
 	}
 
-	if senderOnline {
-		senderConn.WriteMu.Lock()
-		senderConn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
-		senderConn.WriteMu.Unlock()
+	// Send to all receiver connections
+	for _, conn := range receiverConns {
+		conn.WriteMu.Lock()
+		conn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
+		conn.WriteMu.Unlock()
 	}
 }
 
@@ -356,6 +369,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		m.SentAt = sentTime.Format("15:04")
+		fmt.Println(m.SentAt, "time is ")
 		messages = append(messages, m)
 	}
 
@@ -415,6 +429,7 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		m.SentAt = sentTime.Format("15:04")
+		// fmt.Println("time is ", m.SentAt)
 		messages = append(messages, m)
 	}
 

@@ -3,6 +3,8 @@ export let ws;
 import { chatState, startChatWith } from './chat.js';
 
 const unreadNotifs = new Set();
+const displayedMessageIds = new Set();  // ✅ Added to prevent duplicates
+
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         console.log("WebSocket already connected");
@@ -13,6 +15,7 @@ function connectWebSocket() {
     ws.onopen = () => {
         console.log("WebSocket connected");
     };
+
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
@@ -82,6 +85,15 @@ function displayUserStatus(users) {
 
 function handleIncomingMessage(msg) {
     const chatMessages = document.getElementById("chatMessages");
+
+    // ✅ Only skip duplicates if the message has an id
+    if (msg.id && displayedMessageIds.has(msg.id)) {
+        return;  // Duplicate, skip
+    }
+
+    if (msg.id) {
+        displayedMessageIds.add(msg.id);  // ✅ Mark as displayed
+    }
 
     if (msg.from === chatState.currentChatUserId) {
         const msgDiv = document.createElement("div");
