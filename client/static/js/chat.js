@@ -5,9 +5,7 @@ export const chatState = {
   isLoading: false,
   totalMessages: 0,
 };
-
 const displayedMessageIds = new Set();
-
 function throttle(func, delay) {
   let timeoutId;
   let lastExecTime = 0;

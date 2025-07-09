@@ -293,14 +293,12 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		return
 	}
 
-	// Send to all sender connections
 	for _, conn := range senderConns {
 		conn.WriteMu.Lock()
 		conn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
 		conn.WriteMu.Unlock()
 	}
 
-	// Send to all receiver connections
 	for _, conn := range receiverConns {
 		conn.WriteMu.Lock()
 		conn.Conn.WriteMessage(websocket.TextMessage, jsonMsg)
