@@ -1,7 +1,5 @@
 export let ws;
-
 import { chatState, startChatWith } from './chat.js';
-
 const unreadNotifs = new Set();
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -79,7 +77,6 @@ function displayUserStatus(users) {
         container.appendChild(userDiv);
     });
 }
-
 function handleIncomingMessage(msg) {
     let username = "";
      username = document.getElementById("chatUsername").textContent ;
