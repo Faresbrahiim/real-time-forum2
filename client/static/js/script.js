@@ -1,16 +1,18 @@
+// Declare WebSocket globally to use across functions
 export let ws;
+
 import { chatState, startChatWith } from './chat.js';
+
+// Store IDs of users with unread messages
 const unreadNotifs = new Set();
+
+// A. Connect to WebSocket server
 function connectWebSocket() {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log("WebSocket already connected");
-        return;
-    }
+    if (ws && ws.readyState === WebSocket.OPEN) return;
     ws = new WebSocket("ws://localhost:8080/ws");
 
-    ws.onopen = () => {
-        console.log("WebSocket connected");
-    };
+    ws.onopen = () => console.log("WebSocket connected");
+
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
@@ -29,14 +31,14 @@ function connectWebSocket() {
         }
     };
 
-    ws.onclose = () => {
-        console.log("WebSocket disconnected");
-    };
+    ws.onclose = () => console.log("WebSocket disconnected");
 }
 
+// B. Send chat message to server
 window.sendMessage = function () {
     const input = document.getElementById("chatInput");
     const messageText = input.value.trim();
+
     if (!messageText || !chatState.currentChatUserId || ws.readyState !== WebSocket.OPEN) return;
 
     ws.send(JSON.stringify({
@@ -48,6 +50,7 @@ window.sendMessage = function () {
     input.value = "";
 };
 
+// C. Display users and their status
 function displayUserStatus(users) {
     const container = document.getElementById("userList");
     if (!container) return;
@@ -64,7 +67,6 @@ function displayUserStatus(users) {
         const notifSpan = document.createElement("span");
         notifSpan.id = `notif-${user.id}`;
         notifSpan.textContent = "🔔";
-
         notifSpan.style.display = unreadNotifs.has(user.id) ? "inline" : "none";
 
         button.appendChild(notifSpan);
@@ -77,16 +79,16 @@ function displayUserStatus(users) {
         container.appendChild(userDiv);
     });
 }
+
+// D. Display incoming message in chat box
 function handleIncomingMessage(msg) {
-    let username = "";
-     username = document.getElementById("chatUsername").textContent ;
-     console.log(username , "username is")
+    const username = document.getElementById("chatUsername").textContent;
     const chatMessages = document.getElementById("chatMessages");
 
     if (msg.from === chatState.currentChatUserId) {
         const msgDiv = document.createElement("div");
         msgDiv.className = "message received";
-        msgDiv.textContent = username +  ": "+ msg.content;
+        msgDiv.textContent = username + ": " + msg.content;
 
         const time = document.createElement("div");
         time.className = "sent-time";
@@ -115,52 +117,49 @@ function handleIncomingMessage(msg) {
     }
 }
 
+// E. Add click and Enter key event listeners for sending messages
 document.getElementById("sendChat").addEventListener("click", () => {
     window.sendMessage();
 });
 
 document.getElementById("chatInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        window.sendMessage();
-    }
+    if (e.key === "Enter") window.sendMessage();
 });
 
+// F. Connect WebSocket after login
 window.afterLogin = function () {
     connectWebSocket();
 };
 
+// G. Auto-connect WebSocket if session is valid on page load
 window.addEventListener('load', async () => {
     const response = await fetch('/api/checksession');
     const result = await response.json();
     if (result.loggedIn) {
-        window.currentUsername = result.username; 
+        window.currentUsername = result.username;
         connectWebSocket();
     }
 });
 
+// H. Manage notifications
 function clearNotif(userId) {
     unreadNotifs.delete(userId);
     const notifSpan = document.getElementById(`notif-${userId}`);
-    if (notifSpan) {
-        notifSpan.style.display = "none";
-    }
+    if (notifSpan) notifSpan.style.display = "none";
 }
 
 function showNotif(userId) {
     unreadNotifs.add(userId);
     const notifSpan = document.getElementById(`notif-${userId}`);
-    if (notifSpan) {
-        notifSpan.style.display = "inline";
-    }
+    if (notifSpan) notifSpan.style.display = "inline";
 }
 
-
+// I. Listen for logout event from other browser tabs
 window.addEventListener('storage', (e) => {
     if (e.key === 'logged_out' && e.newValue === 'true') {
         if (ws) ws.close();
         document.getElementById("chatBox").style.display = 'none';
         document.getElementById("userList").innerHTML = "";
         alert("You have been logged out.");
-        location.reload(); // Optional: redirect or refresh to update UI
     }
 });

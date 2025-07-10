@@ -369,8 +369,10 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
 		messages = append(messages, m)
 	}
-
+	// 21 messages and limit = 10:
+	// (21 + 10 - 1) / 10 = (30) / 10 = 3 pages.
 	totalPages := (totalMessages + limit - 1) / limit
+	// 4 < 3 false
 	hasMore := pageNum < totalPages
 
 	response := map[string]interface{}{

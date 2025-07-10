@@ -59,5 +59,7 @@ type SafeConn struct {
 	WriteMu sync.Mutex
 }
 
-var ActiveConnections = make(map[string][]*SafeConn)
-var ActiveConnectionsMutex = sync.RWMutex{}
+var (
+	ActiveConnections      = make(map[string][]*SafeConn)
+	ActiveConnectionsMutex = sync.RWMutex{}
+)

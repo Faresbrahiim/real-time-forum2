@@ -1,14 +1,20 @@
+// 1. Global chat state to manage current chat and pagination info
 export const chatState = {
-  currentChatUserId: null,
-  currentPage: 1,
-  hasMore: false,
-  isLoading: false,
-  totalMessages: 0,
+  currentChatUserId: null,   // Current person you’re chatting with
+  currentPage: 1,            // Page number for loading more messages
+  hasMore: false,            // True if more messages are available
+  isLoading: false,          // True if currently loading
+  totalMessages: 0,          // Total number of messages loaded
 };
+
+// 2. To avoid showing the same message twice
 const displayedMessageIds = new Set();
+
+// 3. Throttle function: limits how often a function runs (used for scroll)
 function throttle(func, delay) {
   let timeoutId;
   let lastExecTime = 0;
+
   return function (...args) {
     const currentTime = Date.now();
 
@@ -25,12 +31,14 @@ function throttle(func, delay) {
   };
 }
 
+// 4. Open a chat with a user and load recent messages
 export async function startChatWith(userId, username) {
   const chatMessages = document.getElementById("chatMessages");
   const input = document.getElementById("chatInput");
+
   input.value = "";
   chatMessages.textContent = "";
-  displayedMessageIds.clear(); // Reset when opening new chat
+  displayedMessageIds.clear();  // Reset message IDs
 
   chatState.currentChatUserId = userId;
   chatState.currentPage = 1;
@@ -54,12 +62,15 @@ export async function startChatWith(userId, username) {
 
   const chatSection = document.getElementById("chatBox");
   const closeBtn = document.getElementById("closeChat");
+
   chatSection.style.display = 'flex';
   document.getElementById("chatUsername").textContent = username;
+
   setupScrollListener(userId, username);
 
   const newCloseBtn = closeBtn.cloneNode(true);
   closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+
   newCloseBtn.addEventListener("click", () => {
     chatSection.style.display = 'none';
     const chatMessages = document.getElementById("chatMessages");
@@ -70,6 +81,7 @@ export async function startChatWith(userId, username) {
   });
 }
 
+// 5. Setup scroll event to load older messages when reaching top
 function setupScrollListener(userId, username) {
   const chatMessages = document.getElementById("chatMessages");
 
@@ -87,17 +99,20 @@ function setupScrollListener(userId, username) {
   chatMessages.addEventListener("scroll", chatMessages.scrollHandler);
 }
 
+// 6. Load more messages when user scrolls to top
 async function loadMoreMessages(userId, username) {
   if (chatState.isLoading) return;
 
   chatState.isLoading = true;
   const chatMessages = document.getElementById("chatMessages");
+
   const loadingDiv = document.createElement("div");
   loadingDiv.className = "loading-indicator";
   loadingDiv.textContent = "Loading more messages...";
   loadingDiv.style.textAlign = "center";
   loadingDiv.style.padding = "10px";
   loadingDiv.style.color = "#666";
+
   chatMessages.insertBefore(loadingDiv, chatMessages.firstChild);
 
   try {
@@ -130,6 +145,7 @@ async function loadMoreMessages(userId, username) {
   }
 }
 
+// 7. Display messages in chat window
 function displayMessages(messages, username, prepend = false) {
   const chatMessages = document.getElementById("chatMessages");
   const currentUserId = chatState.currentChatUserId;
@@ -137,7 +153,8 @@ function displayMessages(messages, username, prepend = false) {
   if (!Array.isArray(messages)) return;
 
   messages.forEach(msg => {
-    if (!msg.id || displayedMessageIds.has(msg.id)) return; // Skip duplicates
+    if (!msg.id || displayedMessageIds.has(msg.id)) return;
+
     displayedMessageIds.add(msg.id);
 
     const msgDiv = document.createElement("div");
