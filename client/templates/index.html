@@ -143,9 +143,13 @@
     <div id="chatMessages" class="chat-messages">
     </div>
 
-    <div id="typingIndicator" style="visibility: hidden; font-style: italic; color: gray;"></div>
+    <div id="typingIndicator" class="typing" style="display: none;">
+    <span></span>
+    <span></span>
+    <span></span>
+    </div>
+
     <div class="chat-input-container">
-        <!-- <button id="sendChat" class="send-chat">➤</button> -->
         <input type="text" id="chatInput" placeholder="Type a message..." />
         <button id="sendChat" class="send-chat">➤</button>
 

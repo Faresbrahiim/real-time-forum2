@@ -17,7 +17,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// this function insert user to the database
 func insertUser(db *sql.DB, user g.User) error {
 	query := `
         INSERT INTO users (
@@ -30,8 +29,8 @@ func insertUser(db *sql.DB, user g.User) error {
 	return err
 }
 
-// this function parse registarion form from front and insert it to DB
 func Getregister(w http.ResponseWriter, r *http.Request) {
+	// Regular form parsing works now
 	if err := r.ParseForm(); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -101,7 +100,6 @@ func Getregister(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// this function parse log in form and chack it in DB
 func Getlogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := r.ParseForm(); err != nil {
@@ -140,6 +138,7 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -150,9 +149,10 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = g.DB.QueryRow("SELECT username FROM users WHERE email = ?", username).Scan(&username)
 	// Fetch user ID
 	var userID string
-	err = g.DB.QueryRow("SELECT password_hash FROM users WHERE username = ? OR email = ?", username, username).Scan(&userID)
+	err = g.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
 	if err != nil {
 		log.Println("Failed to fetch user ID:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -162,14 +162,11 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Fetch username
-	_ = g.DB.QueryRow("SELECT username FROM users WHERE email = ?", username).Scan(&username)
-
 	// Set session and store in DB
 	err = session.SetSession(w, userID, username)
 	if err != nil {
 		log.Println("Failed to store session in DB:", err)
+		// Still proceed so the client gets a response
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -178,7 +175,6 @@ func Getlogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// this function check if cookies are active
 func CheckSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -197,7 +193,7 @@ func CheckSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// this function delete cookies
+
 func Getlogout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	session.DeleteSession(w, r)

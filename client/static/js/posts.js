@@ -1,6 +1,5 @@
 let postid = null;
 
-// post creation submit button
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Posts script loaded');
     const postForm = document.getElementById('myCreateForm');
@@ -9,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// handle post creation
 async function handlePostCreation(event) {
     event.preventDefault();
 
@@ -25,8 +23,9 @@ async function handlePostCreation(event) {
     successDiv.style.display = 'none';
 
     const formData = new FormData(form);
-    // slect all checked categories
-    const selectedCategories = Array.from(document.querySelectorAll('input[name="categories"]:checked')).map(input => input.value);
+        const selectedCategories = Array.from(document.querySelectorAll('input[name="categories"]:checked'))
+                                    .map(input => input.value);
+
     selectedCategories.forEach(cat => formData.append('categories[]', cat));
 
     const urlEncodedData = new URLSearchParams(formData).toString();
@@ -64,7 +63,6 @@ async function handlePostCreation(event) {
     return false;
 }
 
-// post create icon
 document.getElementById('createicon').addEventListener('click', function() {
     document.getElementById("createPost").style.display = "block";
     document.getElementById("feedPost").style.display = "none";
@@ -107,7 +105,6 @@ export async function fetchPosts() {
     }
 }
 
-// open single post
 document.addEventListener("click", function(e) {
     const post = e.target.closest(".posts");
     if (post) {
@@ -118,7 +115,6 @@ document.addEventListener("click", function(e) {
     }
 });
 
-// single post funtion
 async function singlePost() {
     try {
         const response = await fetch(`/api/singlepost/${postid}`);
@@ -156,7 +152,6 @@ async function singlePost() {
     }
 }
 
-// submit comment button
 document.addEventListener('DOMContentLoaded', function() {
     const comment = document.getElementById('commentForm');
     if (comment) {
@@ -164,7 +159,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// create comment
 async function handleCommentCreation(event) {
     event.preventDefault();
 
@@ -205,7 +199,6 @@ async function handleCommentCreation(event) {
     }
 }
 
-// fetch all comments in a post
 async function comments() {
     try {
         const response = await fetch(`/api/comments/${postid}`);

@@ -1,6 +1,6 @@
-// export let ws;
-import { chatState, startChatWith } from './chat.js';
-
+export let ws;
+import { chatState, startChatWith  } from './chat.js';
+import {handleTypingIndicator} from './typing.js'
 const unreadNotifs = new Set();
 function connectWebSocket() {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -22,6 +22,8 @@ function connectWebSocket() {
                 case "message":
                     handleIncomingMessage(msg);
                     break;
+                case "typing" :
+                    handleTypingIndicator(msg);
                 default:
                     console.log("Unhandled message:", msg);
             }
@@ -39,6 +41,7 @@ window.sendMessage = function () {
     const input = document.getElementById("chatInput");
     const messageText = input.value.trim();
     if (!messageText || !chatState.currentChatUserId || ws.readyState !== WebSocket.OPEN) return;
+
     ws.send(JSON.stringify({
         type: "message",
         to: chatState.currentChatUserId,
@@ -77,10 +80,10 @@ function displayUserStatus(users) {
         container.appendChild(userDiv);
     });
 }
-
 function handleIncomingMessage(msg) {
     let username = "";
-    username = document.getElementById("chatUsername").textContent ;
+     username = document.getElementById("chatUsername").textContent ;
+     console.log(username , "username is")
     const chatMessages = document.getElementById("chatMessages");
 
     if (msg.from === chatState.currentChatUserId) {
@@ -96,9 +99,6 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-    // ila kan receiver huwa current.chatuserid ... yeanii rah msg tseft machi wseel
-    // First condition: message is from the person you chat with → you received a message.
-    // Second condition: message is to the person you chat with → you sent a message.
     else if (msg.receiverId === chatState.currentChatUserId) {
         const msgDiv = document.createElement("div");
         msgDiv.className = "message sent";
@@ -112,7 +112,6 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-    // chat is not oppening..... , no current user id ...
     else {
         showNotif(msg.from);
         console.log("New message from another user:", msg.from);
@@ -157,3 +156,25 @@ function showNotif(userId) {
         notifSpan.style.display = "inline";
     }
 }
+
+document.getElementById("chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        window.sendMessage();
+    } else {
+        if (ws && ws.readyState === WebSocket.OPEN && chatState.currentChatUserId) {
+            ws.send(JSON.stringify({
+                type: "typing",
+                to: chatState.currentChatUserId
+            }));
+        }
+    }
+});
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'logged_out' && e.newValue === 'true') {
+        if (ws) ws.close();
+        document.getElementById("chatBox").style.display = 'none';
+        document.getElementById("userList").innerHTML = "";
+        alert("You have been logged out");
+    }
+});

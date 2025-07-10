@@ -14,7 +14,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// this function insert posts to DB
 func insertPost(db *sql.DB, post g.Post) error {
 	query := `
 		INSERT INTO posts (id, title, content, category)
@@ -27,9 +26,10 @@ func insertPost(db *sql.DB, post g.Post) error {
 }
 
 
-// this function parse post form and insert it to DB
+
 func Getcreatepost(w http.ResponseWriter, r *http.Request) {
-    if err := r.ParseForm(); err != nil {
+	// Parse the form data
+	if err := r.ParseForm(); err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
             "success": false,
             "error": "Unable to parse form data",
@@ -68,7 +68,6 @@ func Getcreatepost(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// this function fetch all posts in DB
 func Getposts(w http.ResponseWriter, r *http.Request) {
     _, ok := session.GetSessionUsername(r)
     if !ok {
@@ -96,7 +95,6 @@ func Getposts(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(posts)
 }
 
-// this function fetch a single post
 func GetSinglePost(w http.ResponseWriter, r *http.Request) {
     // Extract the post ID from the URL manually
     pathParts := strings.Split(r.URL.Path, "/")
@@ -104,8 +102,9 @@ func GetSinglePost(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Post ID not specified", http.StatusBadRequest)
         return
     }
-    id := pathParts[3] // post ID
+    id := pathParts[3] // e.g. /api/singlepost/{id}
 
+    // Prepare query
     var post g.Post
     err := g.DB.QueryRow("SELECT id, title, content, category FROM posts WHERE id = ?", id).
         Scan(&post.ID, &post.Title, &post.Content, &post.Category)
@@ -118,19 +117,20 @@ func GetSinglePost(w http.ResponseWriter, r *http.Request) {
         }
         return
     }
+
+    // Return JSON response
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(post)
 }
 
-// this function fetch all comments in a post
 func Getcomments(w http.ResponseWriter, r *http.Request) {
-    // Extract the post ID from the URL
+    // Extract the post ID from the URL manually
     pathParts := strings.Split(r.URL.Path, "/")
     if len(pathParts) < 4 || pathParts[3] == "" {
         http.Error(w, "Post ID not specified", http.StatusBadRequest)
         return
     }
-    postID := pathParts[3] // post ID
+    postID := pathParts[3] // e.g. /api/comments/{postID}
 
     rows, err := g.DB.Query("SELECT id, post_id, author, content, created_at FROM comments WHERE post_id = ?", postID)
     if err != nil {
@@ -152,7 +152,6 @@ func Getcomments(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(comments)
 }
 
-// this function hanlde comments creation
 func Getcreatecomment(w http.ResponseWriter, r *http.Request) {
     // Parse the form data
     if err := r.ParseForm(); err != nil {
@@ -163,13 +162,13 @@ func Getcreatecomment(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Extract post ID from the URL 
+    // Extract post ID from the URL manually
     pathParts := strings.Split(r.URL.Path, "/")
     if len(pathParts) < 4 || pathParts[3] == "" {
         http.Error(w, "Post ID not specified", http.StatusBadRequest)
         return
     }
-    postID := pathParts[3] // post ID
+    postID := pathParts[3] // e.g. /api/comments/{postID}
 
     var comment g.Comment
     comment.ID = uuid.New().String()

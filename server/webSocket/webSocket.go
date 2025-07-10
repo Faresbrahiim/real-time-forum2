@@ -98,6 +98,26 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		switch base["type"] {
 		case "message":
 			handleIncomingMessage(userID, msg)
+		case "typing":
+			toID, ok := base["to"].(string)
+			if !ok {
+				log.Println("Invalid 'to' in typing event")
+				continue
+			}
+
+			typingPayload := map[string]interface{}{
+				"type": "typing",
+				"from": userID,
+			}
+
+			typingJSON, err := json.Marshal(typingPayload)
+			if err != nil {
+				log.Println("Failed to marshal typing payload")
+				continue
+			}
+
+			sendToUser(toID, typingJSON)
+
 		default:
 			fmt.Printf("Received unhandled: %s\n", msg)
 		}
@@ -444,4 +464,25 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func sendToUser(userID string, message []byte) {
+	g.ActiveConnectionsMutex.RLock()
+	conns, exists := g.ActiveConnections[userID]
+	g.ActiveConnectionsMutex.RUnlock()
+
+	if !exists {
+		fmt.Printf("No active connections for user: %s\n", userID)
+		return
+	}
+
+	for _, safeConn := range conns {
+		safeConn.WriteMu.Lock()
+		err := safeConn.Conn.WriteMessage(websocket.TextMessage, message)
+		safeConn.WriteMu.Unlock()
+
+		if err != nil {
+			fmt.Printf("Failed to send message to user %s: %v\n", userID, err)
+		}
+	}
 }
