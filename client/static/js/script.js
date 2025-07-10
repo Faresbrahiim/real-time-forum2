@@ -153,3 +153,14 @@ function showNotif(userId) {
         notifSpan.style.display = "inline";
     }
 }
+
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'logged_out' && e.newValue === 'true') {
+        if (ws) ws.close();
+        document.getElementById("chatBox").style.display = 'none';
+        document.getElementById("userList").innerHTML = "";
+        alert("You have been logged out.");
+        location.reload(); // Optional: redirect or refresh to update UI
+    }
+});
