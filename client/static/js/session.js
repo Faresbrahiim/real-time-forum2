@@ -2,7 +2,9 @@ console.log("Session script loaded");
 
 import { fetchPosts } from './posts.js';
 
+// check if cookies already active
 document.addEventListener('DOMContentLoaded', checkSession);
+
 
 window.addEventListener('storage', (event) => {
     if (event.key === 'session_logged_out') {
@@ -10,6 +12,7 @@ window.addEventListener('storage', (event) => {
     }
 });
 
+// check if session active
 async function checkSession() {
     console.log("Checking session status...");
     try {
@@ -41,6 +44,7 @@ async function checkSession() {
     }
 }
 
+// home navBar button
 document.getElementById("home").addEventListener("click", function(e) {
     e.preventDefault();
     document.getElementById("feedPost").style.display = "grid";

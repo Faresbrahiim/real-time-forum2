@@ -3,12 +3,14 @@ console.log("Register script loaded");
 import {ws} from "./script.js"
 import { fetchPosts } from './posts.js';
 
+// signUP home navbar
 document.getElementById("homesign").addEventListener("click", function(e) {
     document.getElementById('signUpSection').style.display = "none";
     document.getElementById('logInSection').style.display = "block";
     document.getElementById("homesign").style.display = "none";
 })
 
+// switch to sign up form 
 document.getElementById("signUpLink").addEventListener("click", function(e) {
     const form = document.getElementById('myLogInForm');
     const errorDiv = document.getElementById('errorMessage');
@@ -23,6 +25,7 @@ document.getElementById("signUpLink").addEventListener("click", function(e) {
     
 })
 
+// sign up submit butten
 document.addEventListener('DOMContentLoaded', function() {
     const signUpForm = document.getElementById('mySignUpForm');
     if (signUpForm) {
@@ -30,8 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-
-
+// handle signUp
 async function handleSignUp(event) {
     event.preventDefault();
     const form = document.getElementById('mySignUpForm');
@@ -80,7 +82,7 @@ async function handleSignUp(event) {
     return false;
 }
 
-// log in form section
+// logIn submit button
 document.addEventListener('DOMContentLoaded', function() { 
     const logInForm = document.getElementById('myLogInForm');
     if (logInForm) {
@@ -89,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("Log In form event listener added");
 });
 
+// handle logIn
 async function handleLogIn(event) {
     event.preventDefault();
 
@@ -138,6 +141,7 @@ async function handleLogIn(event) {
     return false;
 }
 
+// logOut button
 document.getElementById("logout").addEventListener("click", function(e) {
     e.preventDefault();
     fetch('/api/logout', {
@@ -158,6 +162,7 @@ document.getElementById("logout").addEventListener("click", function(e) {
             document.getElementById("logout").style.display = "none";
             document.getElementById("home").style.display = "none";
             document.getElementById("createicon").style.display = "none";
+            document.getElementById("createPost").style.display = "none";
             document.getElementById("feedPost").style.display = "none";
             document.getElementById('logsuccessMessage').style.display = 'none';
             document.getElementById('fullSinglePost').style.display = 'none';
