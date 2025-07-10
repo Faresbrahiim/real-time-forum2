@@ -1,4 +1,4 @@
-export let ws;
+// export let ws;
 import { chatState, startChatWith } from './chat.js';
 
 const unreadNotifs = new Set();
@@ -39,7 +39,6 @@ window.sendMessage = function () {
     const input = document.getElementById("chatInput");
     const messageText = input.value.trim();
     if (!messageText || !chatState.currentChatUserId || ws.readyState !== WebSocket.OPEN) return;
-
     ws.send(JSON.stringify({
         type: "message",
         to: chatState.currentChatUserId,
@@ -81,8 +80,7 @@ function displayUserStatus(users) {
 
 function handleIncomingMessage(msg) {
     let username = "";
-     username = document.getElementById("chatUsername").textContent ;
-     console.log(username , "username is")
+    username = document.getElementById("chatUsername").textContent ;
     const chatMessages = document.getElementById("chatMessages");
 
     if (msg.from === chatState.currentChatUserId) {
@@ -98,6 +96,9 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+    // ila kan receiver huwa current.chatuserid ... yeanii rah msg tseft machi wseel
+    // First condition: message is from the person you chat with → you received a message.
+    // Second condition: message is to the person you chat with → you sent a message.
     else if (msg.receiverId === chatState.currentChatUserId) {
         const msgDiv = document.createElement("div");
         msgDiv.className = "message sent";
@@ -111,6 +112,7 @@ function handleIncomingMessage(msg) {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+    // chat is not oppening..... , no current user id ...
     else {
         showNotif(msg.from);
         console.log("New message from another user:", msg.from);

@@ -32,6 +32,7 @@ export async function startChatWith(userId, username) {
   chatMessages.textContent = "";
   displayedMessageIds.clear(); // Reset when opening new chat
 
+  // reset flags becuase we opened a  new convertation
   chatState.currentChatUserId = userId;
   chatState.currentPage = 1;
   chatState.hasMore = false;
@@ -39,6 +40,7 @@ export async function startChatWith(userId, username) {
   chatState.totalMessages = 0;
 
   try {
+    // last 10 msgs 
     const response = await fetch(`/api/latest-messages?user_id=${userId}`);
     if (response.ok) {
       const data = await response.json();
