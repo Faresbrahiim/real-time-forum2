@@ -303,7 +303,7 @@ func deliverMessageToUser(senderID, receiverID, content string, conversationID i
 		"content":         content,
 		"receiverId":      receiverID,
 		"conversation_id": conversationID,
-		"sent_at":         time.Now().Format("15:04"),
+		"sent_at":         time.Now().Format("2006-01-02 15:04"),
 	}
 
 	jsonMsg, err := json.Marshal(messagePayload)
@@ -385,7 +385,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
+		m.SentAt = sentTime.Add(1 * time.Hour).Format("2006-01-02 15:04")
 		messages = append(messages, m)
 	}
 
@@ -444,7 +444,7 @@ func GetLatestMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error scanning message row:", err)
 			continue
 		}
-		m.SentAt = sentTime.Add(1 * time.Hour).Format("15:04")
+		m.SentAt = sentTime.Add(1 * time.Hour).Format("2006-01-02 15:04")
 		messages = append(messages, m)
 	}
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
