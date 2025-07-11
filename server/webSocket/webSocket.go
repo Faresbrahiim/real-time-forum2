@@ -191,22 +191,21 @@ func GetOnlineUsers(excludeUserID string) []UserStatus {
 	var users []UserStatus
 
 	query := `
-		SELECT u.id, u.username, MAX(m.sent_at) AS last_message
-		FROM users u
-		LEFT JOIN (
-			SELECT sender_id AS user_id, sent_at FROM Messages
-			UNION ALL
-			SELECT receiver_id AS user_id, sent_at FROM Messages
-		) m ON u.id = m.user_id
-		WHERE u.id != ?
-		GROUP BY u.id
-		ORDER BY
-			CASE WHEN last_message IS NULL THEN 1 ELSE 0 END,
-			last_message DESC,
-			u.username ASC
-	`
+SELECT u.id, u.username, MAX(m.sent_at) AS last_message
+FROM users u
+LEFT JOIN (
+    SELECT * FROM Messages
+    WHERE sender_id = ? OR receiver_id = ?
+) m ON (u.id = m.sender_id OR u.id = m.receiver_id)
+WHERE u.id != ?
+GROUP BY u.id, u.username
+ORDER BY 
+    CASE WHEN MAX(m.sent_at) IS NULL THEN 1 ELSE 0 END,
+    MAX(m.sent_at) DESC,
+    u.username ASC;
+`
 
-	rows, err := g.DB.Query(query, excludeUserID)
+	rows, err := g.DB.Query(query, excludeUserID, excludeUserID, excludeUserID)
 	if err != nil {
 		log.Println("Error selecting users:", err)
 		return nil
