@@ -1,9 +1,10 @@
-:root{
-    --color1: #6E7271;
-    --color2: #ACAD94;
-    --color3: #E2E2E2;
-    --color4: #D8D4D5;
+:root {
+    --color1: #2C3E50;  /* Dark blue-gray for headers and text */
+    --color2: #3498DB;  /* Blue for buttons or highlights */
+    --color3: #F5F7FA;  /* Light background */
+    --color4: #BDC3C7;  /* Light gray for borders or secondary elements */
 }
+
 
 html, body {
   height: 100%;
@@ -71,6 +72,7 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    background-color: white;
 }
 
 #postContainer {
@@ -93,3 +95,4 @@ body {
 .user  {
     margin-left:  18px;
 }
+
